@@ -1,0 +1,20 @@
+section rib {
+	repeat 3 {
+		k k k k k;
+		p p p p p;
+	}
+	k p k p;
+	k p;
+}
+
+section aumentos_y_disminuciones {
+	ssk yo;
+	(k3tog k4tog k6tog)*2;
+}
+
+section markers{
+	mA mB;
+	rmC;
+}
+
+	
