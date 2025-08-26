@@ -8,7 +8,7 @@ import (
 )
 
 type Node interface {
-	Debug() string // Function that all nodes implement.
+	String() string // Function that all nodes implement.
 }
 
 type Expr interface {
@@ -20,10 +20,10 @@ type Group struct {
 }
 
 func (g *Group) isGroup() {}
-func (g *Group) Debug() string {
+func (g *Group) String() string {
 	var exprs []string
 	for _, expr  := range g.Content {
-		exprs = append(exprs, expr.Debug())
+		exprs = append(exprs, expr.String())
 	}
 	return strings.Join(exprs, ", ")
 }
@@ -35,25 +35,25 @@ type ParsedStitch interface {
 
 type ParsedKnit struct {}
 func (k *ParsedKnit) isStitch() {}
-func (k *ParsedKnit) Debug() string {return "Knit"}
+func (k *ParsedKnit) String() string {return "Knit"}
 
 type ParsedPurl struct {}
 func (p *ParsedPurl) isStitch() {}
-func (p *ParsedPurl) Debug() string {return "Purl"}
+func (p *ParsedPurl) String() string {return "Purl"}
 
 type ParsedSsk struct {} // REDUCCION
 func (s *ParsedSsk) isStitch() {}
-func (s *ParsedSsk) Debug() string {return "Slip slip knit"}
+func (s *ParsedSsk) String() string {return "Slip slip knit"}
 
 type ParsedKtog struct { // REDUCCION
 	Count int
 }
 func (k *ParsedKtog) isStitch() {}
-func (k *ParsedKtog) Debug() string {return "Knit "+strconv.Itoa(k.Count) + " together"}
+func (k *ParsedKtog) String() string {return "Knit "+strconv.Itoa(k.Count) + " together"}
 
 type ParsedYo struct {}
 func (y *ParsedYo) isStitch() {}
-func (y *ParsedYo) Debug() string {return "Yarn over"}
+func (y *ParsedYo) String() string {return "Yarn over"}
 
 type ParsedRepeat interface { 
 	Expr
@@ -64,8 +64,8 @@ type ParsedRepeatExact struct {
 	Content Expr
 	Count int
 }
-func (r *ParsedRepeatExact) Debug() string {
-	return "Rep " + strconv.Itoa(r.Count) + "(" + r.Content.Debug() +")"
+func (r *ParsedRepeatExact) String() string {
+	return "Rep " + strconv.Itoa(r.Count) + "(" + r.Content.String() +")"
 }
 func (r *ParsedRepeatExact) isParsedRepeat() {}
 
@@ -74,8 +74,8 @@ type ParsedRepeatNeg struct {
 	Content Expr
 	Count int
 }
-func (r *ParsedRepeatNeg) Debug() string {
-	return "Rep until " + strconv.Itoa(r.Count) + "(" + r.Content.Debug() +")"
+func (r *ParsedRepeatNeg) String() string {
+	return "Rep until " + strconv.Itoa(r.Count) + "(" + r.Content.String() +")"
 }
 func (r *ParsedRepeatNeg) isParsedRepeat() {}
 
@@ -84,10 +84,10 @@ type ParsedRepeatBlock struct {
 	Count int
 }
 
-func (r *ParsedRepeatBlock) Debug() string {
+func (r *ParsedRepeatBlock) String() string {
 	var exprs []string
 	for _, row  := range r.Content {
-		exprs = append(exprs, row.Debug())
+		exprs = append(exprs, row.String())
 	}
 	return "Repeat "+strconv.Itoa(r.Count)+" times: \n  " + strings.Join(exprs, "\n  ")
 }
@@ -100,21 +100,21 @@ type PlaceMarker struct {
 	Name string
 }
 func (p *PlaceMarker) IsParsedAction() {}
-func (p *PlaceMarker) Debug() string{ return "Place Marker "+p.Name }
+func (p *PlaceMarker) String() string{ return "Place Marker "+p.Name }
 
 type RemoveMarker struct {
 	Name string
 }
 func (r *RemoveMarker) IsParsedAction() {}
-func (r *RemoveMarker) Debug() string{ return "Remove Marker "+r.Name }
+func (r *RemoveMarker) String() string{ return "Remove Marker "+r.Name }
 
 type ParsedRow struct {
 	Content []Expr
 }
-func (r *ParsedRow) Debug() string {
+func (r *ParsedRow) String() string {
 	var exprs []string
 	for _, expr  := range r.Content {
-		exprs = append(exprs, expr.Debug())
+		exprs = append(exprs, expr.String())
 	}
 	return strings.Join(exprs, ", ")
 

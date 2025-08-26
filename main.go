@@ -35,6 +35,24 @@ func test_parser(file io.Reader){
 	}
 }
 
+
+
+func test_compile(file io.Reader) {
+	parser := NewParser(file)
+	pattern, _ := parser.ParsePattern()
+
+	c := NewCompiler()
+	for _, section := range pattern {
+		for _, node := range section.Content {
+			if row, ok := node.(*ParsedRow); ok {
+				c.compileRow(row)
+			}
+		}
+	}
+	c.printAllRows()
+}
+
+
 func main() {
 	file, err := os.Open("input.test")
 	if err != nil {
@@ -47,7 +65,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	test_parser(file)
-	
-
+	// test_parser(file)
+	test_compile(file)
 }

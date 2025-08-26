@@ -69,6 +69,13 @@ func (r *Row) weight() int {
 	}
 	return w
 }
+func (r *Row) String() string{
+	stitches := []string{}
+	for _, st := range r.Stitches {
+		stitches = append(stitches, st.String())
+	}
+	return fmt.Sprintf("Row %d: [%s]", r.Number, fmt.Sprintf("%s", stitches))
+}
 
 type Compiler struct {
 	LastRow  *Row
@@ -148,28 +155,7 @@ func (c *Compiler) removeMarker(markerName string) error{
 func (c *Compiler) compileRow(parsedRow *ParsedRow) error {
 	c.startNewRow()
 	for _, parsedExpr := range(parsedRow.Content){
-		if stitch, ok := isParsedStitch(parsedExpr); ok {
-			c.compileStitch(stitch)
-		} else if act, ok := isParsedAction(parsedExpr); ok {
-			c.compileParsedAction(act)
-		} else if rep, ok := isParsedRepeat(parsedExpr); ok{
-			c.compileParsedRepeat(rep)
-		} else {
-			return fmt.Errorf("Unknown expresion %d", parsedExpr)
-		}
-	}
-	return nil
-}
-
-func (c *Compiler) compileExpr(parsedExpr Node) error {
-	if stitch, ok := isParsedStitch(parsedExpr); ok {
-		c.compileStitch(stitch)
-	} else if act, ok := isParsedAction(parsedExpr); ok {
-		c.compileParsedAction(act)
-	} else if rep, ok := isParsedRepeat(parsedExpr); ok{
-		c.compileParsedRepeat(rep)
-	} else {
-		return fmt.Errorf("Unknown expresion %d", parsedExpr)
+		c.compileExpr(parsedExpr)
 	}
 	return nil
 }
@@ -209,18 +195,50 @@ func (c *Compiler) compileParsedAction(act ParsedAction) (error) {
 	return fmt.Errorf("Unknown action type: %T", act)
 }
 
-func (c *Compiler) compileParsedRepeat(rep ParsedRepeat) (error) {
-	switch r := rep.(type) {
-	case *ParsedRepeatNeg:
-		n := r.Count
-		expr := r.Content
-		reps := (c.LastRow.weight() - c.buf.Pos.CurrentCol) / expr.advance()
-	case *ParsedRepeatExact:
-		c.removeMarker(a.Name)
-	default:
-		return fmt.Errorf("Unknown action type: %T", act)
-	}
-	return fmt.Errorf("Unknown action type: %T", act)
+func (c *Compiler) compileExpr(expr Expr) ([]Stitch, error) {
+    var stitches []Stitch
+    // Si el Expr es un grupo, iteramos sobre sus contenidos
+    if group, ok := expr.(*Group); ok {
+        for _, subExpr := range group.Content {
+            subStitches, err := c.compileExpr(subExpr)
+            if err != nil {
+                return nil, err
+            }
+            stitches = append(stitches, subStitches...)
+        }
+    } else if parsedStitch, ok := expr.(ParsedStitch); ok {
+        st, err := c.compileStitch(parsedStitch)
+        if err != nil {
+            return nil, err
+        }
+        stitches = append(stitches, st)
+    } else if repeatExpr, ok := expr.(ParsedRepeat); ok {
+        switch r := repeatExpr.(type) {
+        case *ParsedRepeatExact:
+            for i := 0; i < r.Count; i++ {
+                subStitches, err := c.compileExpr(r.Content)
+                if err != nil {
+                    return nil, err
+                }
+                stitches = append(stitches, subStitches...)
+            }
+        case *ParsedRepeatNeg:
+			return nil, fmt.Errorf("Not implemented yet.")
+        default:
+            return nil, fmt.Errorf("unknown repeat type: %T", repeatExpr)
+        }
+	} else if actionExpr, ok := expr.(ParsedAction); ok {
+        c.compileParsedAction(actionExpr)
+    } else {
+        return nil, fmt.Errorf("unsupported expression type: %T", expr)
+    }
+
+    return stitches, nil
 }
 
 
+func (c *Compiler) printAllRows() {
+	for _, row := range c.Rows {
+		fmt.Printf("Row %d: %v\n", row.Number, row)
+	}
+}
