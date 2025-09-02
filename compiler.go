@@ -1,244 +1,464 @@
 package main
 
 import (
-	"strconv"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 type CompilePosition struct {
-	RowPos int	//row
-	ColPos int  //st
+	RowPos int // row
+	ColPos int // st
 }
 
 type CompileUnit interface {
 	String() string
 }
 
-// Interface Stitches: Knit, purl, ssk, ktog, yo.
-type Stitch interface {
+type Expr interface {
 	CompileUnit
-	weight() int 
+	isExpr()
+}
+
+type Stitch interface {
+	Expr
+	weight() int
 	advance() int
 }
 
-type Knit struct {}
-func (k *Knit) isStitch() {}
-func (k *Knit) String() string {return "Knit"}
-func (k *Knit) weight() int {return 1}
-func (k *Knit) advance() int {return 1}
+// Implementación de isExpr() para todos los stitches
+func (k *Knit) isExpr()  {}
+func (p *Purl) isExpr()  {}
+func (s *Ssk) isExpr()   {}
+func (k *Ktog) isExpr()  {}
+func (y *Yo) isExpr()    {}
+func (c *Co) isExpr()    {}
+func (c *Bo) isExpr()    {}
+func (g *Group) isExpr() {}
 
-type Purl struct {}
-func (p *Purl) isStitch() {}
-func (p *Purl) String() string {return "Purl"}
-func (p *Purl) weight() int {return 1}
-func (p *Purl) advance() int {return 1}
+type Knit struct{}
+func (k *Knit) String() string { return "Knit" }
+func (k *Knit) weight() int    { return 1 }
+func (k *Knit) advance() int   { return 1 }
 
-type Ssk struct {} // REDUCCION
-func (s *Ssk) isStitch() {}
-func (s *Ssk) String() string {return "Slip slip knit"}
-func (s *Ssk) weight() int {return 1}
-func (s *Ssk) advance() int {return 2}
+type Purl struct{}
+func (p *Purl) String() string { return "Purl" }
+func (p *Purl) weight() int    { return 1 }
+func (p *Purl) advance() int   { return 1 }
+
+type Ssk struct{} // REDUCCION
+func (s *Ssk) String() string { return "Slip slip knit" }
+func (s *Ssk) weight() int    { return 1 }
+func (s *Ssk) advance() int   { return 2 }
 
 type Ktog struct { // REDUCCION
 	Count int
 }
-func (k *Ktog) isStitch() {}
-func (k *Ktog) String() string {return "Knit "+strconv.Itoa(k.Count) + " together"}
-func (k *Ktog) weight() int {return 1}
-func (k *Ktog) advance() int {return 2}
+func (k *Ktog) String() string { return "Knit " + strconv.Itoa(k.Count) + " together" }
+func (k *Ktog) weight() int    { return 1 }
+func (k *Ktog) advance() int   { return 2 }
 
-type Yo struct {}
-func (y *Yo) isStitch() {}
-func (y *Yo) String() string {return "Yarn over"}
-func (y *Yo) weight() int {return 1}
-func (y *Yo) advance() int {return 0}
+type Co struct {
+	Count int
+}
+func (c *Co) String() string { return "Cast on" + strconv.Itoa(c.Count)}
+func (c *Co) weight() int    { return c.Count }
+func (c *Co) advance() int   { return 0 }
 
-type Marker struct {
-	Name string
-	Pos CompilePosition
+type Bo struct {
+	Count int
+}
+func (b *Bo) String() string { return "Bind off" + strconv.Itoa(b.Count)}
+func (b *Bo) weight() int    { return 0}
+func (b *Bo) advance() int   { return b.Count }
+
+type Yo struct{}
+func (y *Yo) String() string { return "Yarn over" }
+func (y *Yo) weight() int    { return 1 }
+func (y *Yo) advance() int   { return 0 }
+
+// Grupo - análogo a Group del parser
+type Group struct {
+	Content []Expr
+}
+
+func (g *Group) String() string {
+	var exprs []string
+	for _, expr := range g.Content {
+		exprs = append(exprs, expr.String())
+	}
+	return "(" + strings.Join(exprs, ", ") + ")"
+}
+
+
+type Repeat interface {
+	Expr
+	isRepeat()
+}
+
+type RepeatExact struct {
+	Content Expr
+	Count   int
+}
+
+func (r *RepeatExact) isExpr()   {}
+func (r *RepeatExact) isRepeat() {}
+func (r *RepeatExact) String() string {
+	return "Rep " + strconv.Itoa(r.Count) + "(" + r.Content.String() + ")"
+}
+
+type RepeatNeg struct {
+	Content Expr
+	Count   int
+}
+
+func (r *RepeatNeg) isExpr()   {}
+func (r *RepeatNeg) isRepeat() {}
+func (r *RepeatNeg) String() string {
+	return "Rep until " + strconv.Itoa(r.Count) + "(" + r.Content.String() + ")"
+}
+
+// Funciones helper para verificar tipos
+func isStitch(expr Expr) (Stitch, bool) {
+	st, ok := expr.(Stitch)
+	return st, ok
+}
+
+func isRepeat(expr Expr) (Repeat, bool) {
+	rep, ok := expr.(Repeat)
+	return rep, ok
+}
+
+func isGroup(expr Expr) (*Group, bool) {
+	group, ok := expr.(*Group)
+	return group, ok
 }
 
 type Row struct {
 	Stitches []Stitch
-	Number int
+	Number   int
 }
+
 func (r *Row) weight() int {
 	w := 0
-	for _, st  := range r.Stitches {
-		w += st.weight()	
+	for _, st := range r.Stitches {
+		w += st.weight()
 	}
 	return w
 }
-func (r *Row) String() string{
+func (r *Row) advance() int {
+	w := 0
+	for _, st := range r.Stitches {
+		w += st.advance()
+	}
+	return w
+}
+
+func (r *Row) String() string {
 	stitches := []string{}
 	for _, st := range r.Stitches {
 		stitches = append(stitches, st.String())
 	}
-	return fmt.Sprintf("Row %d: [%s]", r.Number, fmt.Sprintf("%s", stitches))
+	return fmt.Sprintf("Row %d: [%s]", r.Number, strings.Join(stitches, ", "))
 }
 
 type Compiler struct {
-	LastRow  *Row
-	Markers  []Marker
-	Rows     []*Row
-	Errors   []error
-	buf      struct {
-		Pos        CompilePosition
-		CurrentRow *Row
-	}
+	LastRow    *Row
+	Rows       []*Row
+	Errors     []error
+	Pos        CompilePosition
+	CurrentRow *Row
 }
 
 func NewCompiler() *Compiler {
 	return &Compiler{
-		LastRow: nil,
-		Markers: make([]Marker, 0),
-		Rows:    make([]*Row, 0),
-		Errors:  make([]error, 0),
-		buf: struct {
-			Pos        CompilePosition
-			CurrentRow *Row
-		}{
-			Pos:        CompilePosition{RowPos: 0, ColPos: 1},
-			CurrentRow: nil,
-		},
+		LastRow:    nil,
+		Rows:       make([]*Row, 0),
+		Errors:     make([]error, 0),
+		Pos:        CompilePosition{RowPos: 0, ColPos: 1},
+		CurrentRow: nil,
 	}
 }
 
 func (c *Compiler) startNewRow() {
-	// Empieza en 0, ppor lo que cuando creo mi primera row, tengo que sumarle uno.
-	c.buf.Pos.RowPos ++
-	newRow := &Row {
+	c.Pos.RowPos++
+	newRow := &Row{
 		Stitches: make([]Stitch, 0),
-		Number: c.buf.Pos.RowPos,
+		Number:   c.Pos.RowPos,
 	}
-	if c.buf.CurrentRow != nil {
-		c.Rows = append (c.Rows, c.buf.CurrentRow)
-		c.LastRow = c.buf.CurrentRow
+	if c.CurrentRow != nil {
+		c.Rows = append(c.Rows, c.CurrentRow)
+		c.LastRow = c.CurrentRow
 	}
-	c.buf.CurrentRow = newRow
-	c.buf.Pos.ColPos = 1
+	c.CurrentRow = newRow
+	c.Pos.ColPos = 1
 }
 
 func (c *Compiler) addStitch(st Stitch) error {
-	if c.buf.CurrentRow == nil {
+	if c.CurrentRow == nil {
 		return fmt.Errorf("No active row to add sts")
 	}
 
-	newPos := c.buf.Pos.ColPos + st.advance()
-	// Primero chequeamos si se puede.	
+	currentPos := c.Pos.ColPos
 	if c.LastRow != nil {
 		lastWeight := c.LastRow.weight()
-		if newPos > lastWeight {
-			return fmt.Errorf("Exceded number of sts (max %d, got %d)", lastWeight, newPos) //TODO: manejo de errores
+		if currentPos > lastWeight {
+			return fmt.Errorf("Exceded number of sts (max %d, got %d) in Row %d", lastWeight, currentPos, c.Pos.RowPos)
 		}
 	}
 
-	//Updateamos todo.
-	c.buf.CurrentRow.Stitches = append(c.buf.CurrentRow.Stitches, st)
-	c.buf.Pos.ColPos = newPos
+	newPos := c.Pos.ColPos + st.advance()
+	c.CurrentRow.Stitches = append(c.CurrentRow.Stitches, st)
+	c.Pos.ColPos = newPos
 	return nil
 }
 
-func (c *Compiler) addMarker(mk Marker) {
-	c.Markers = append(c.Markers, mk)
+func (c *Compiler) expandGroup(compiledExpr Expr) ([]Stitch, error){
+	var sts []Stitch
+    switch expr := compiledExpr.(type) {
+	case *Group:
+		for _, expr := range expr.Content {
+			expanded, _ := c.expandExpr(expr)
+			sts = append(sts, expanded...)
+		}
+	default:
+		return nil, fmt.Errorf("Expected group expression, received: %T", expr)
+	}
+	return sts, nil
 }
 
-func (c *Compiler) removeMarker(markerName string) error{
-	for i := range c.Markers {
-		if c.Markers[i].Name == markerName {
-			c.Markers = append(c.Markers[:i], c.Markers[i+1:]...)
+func (c *Compiler) expandRepeat(compiledExpr Expr) ([]Stitch, error) {
+	var sts []Stitch
+	switch expr := compiledExpr.(type){
+	case *RepeatExact:
+		times := expr.Count
+        if times == 0 {
+            if c.LastRow != nil {
+                remaining := c.LastRow.weight() - (c.Pos.ColPos - 1)
+                perRepeat := c.exprAdvance(expr.Content)
+                if perRepeat == 0 {
+                    return nil, fmt.Errorf("repeat content has zero advance, cannot calculate repetitions")
+                }
+                times = remaining / perRepeat
+            } else {
+                return nil, fmt.Errorf("cannot infer repeat count: no previous row")
+            }
+        }
+		for range times {
+			expanded, err := c.expandExpr(expr.Content)
+			if err != nil {
+				return nil, err
+			}
+			sts = append(sts, expanded...)
+
 		}
+	case *RepeatNeg:
+		if c.LastRow == nil {
+			return nil, fmt.Errorf("cannot expand RepeatNeg: no previous row to infer remaining stitches")
+		}
+
+		total := c.LastRow.weight()
+		remaining := total - (c.Pos.ColPos - 1)
+		perRepeat := c.exprAdvance(expr.Content)
+
+		if perRepeat == 0 {
+			return nil, fmt.Errorf("repeat content has zero advance, cannot calculate repetitions")
+		}
+
+		times := max((remaining - expr.Count) / perRepeat, 0)
+		for range times {
+			expanded, err := c.expandExpr(expr.Content)
+			if err != nil {
+				return nil, err
+			}
+			sts = append(sts, expanded...)
+		}
+	default:
+		return nil, fmt.Errorf("Expected repeat expression, received: %T", expr)
 	}
-	return fmt.Errorf("Marker %d not found", markerName)
+	return sts, nil
+}
+
+func (c *Compiler) expandExpr(compiledExpr Expr) ([]Stitch, error){
+	var sts []Stitch	
+    switch expr := compiledExpr.(type) {
+	case Stitch:
+		sts = append(sts, expr)
+		return  sts, nil
+	case *Group:
+		sts, err := c.expandGroup(expr)
+		if err != nil {
+			return nil, err
+		}
+		return sts, nil
+	case Repeat:
+		sts, err := c.expandRepeat(expr)
+		if err != nil {
+			return nil, err
+		}
+		return sts, nil
+	default: 
+        return nil, fmt.Errorf("unsupported parsed expression type: %T", compiledExpr)
+	}
 }
 
 func (c *Compiler) compileRow(parsedRow *ParsedRow) error {
-	c.startNewRow()
-	for _, parsedExpr := range(parsedRow.Content){
-		c.compileExpr(parsedExpr)
-	}
-	return nil
-}
-
-
-func (c *Compiler) compileStitch(stitch ParsedStitch) (Stitch, error) {
-	var st Stitch
-	switch s := stitch.(type) {
-	case *ParsedKnit:
-		st = &Knit{}
-	case *ParsedPurl:
-		st = &Purl{}
-	case *ParsedSsk:
-		st = &Ssk{}
-	case *ParsedKtog:
-		st = &Ktog{Count: s.Count}
-	case *ParsedYo:
-		st = &Yo{}
-	default:
-		return nil, fmt.Errorf("Unknown stitch type: %T", stitch)
-	}
-
-	c.addStitch(st)
-	return st, nil
-}
-
-func (c *Compiler) compileParsedAction(act ParsedAction) (error) {
-	switch a := act.(type) {
-	case *PlaceMarker:
-		marker := Marker{Name: a.Name, Pos: c.buf.Pos} 
-		c.addMarker(marker)
-	case *RemoveMarker:
-		c.removeMarker(a.Name)
-	default:
-		return fmt.Errorf("Unknown action type: %T", act)
-	}
-	return fmt.Errorf("Unknown action type: %T", act)
-}
-
-func (c *Compiler) compileExpr(expr Expr) ([]Stitch, error) {
-    var stitches []Stitch
-    // Si el Expr es un grupo, iteramos sobre sus contenidos
-    if group, ok := expr.(*Group); ok {
-        for _, subExpr := range group.Content {
-            subStitches, err := c.compileExpr(subExpr)
-            if err != nil {
-                return nil, err
-            }
-            stitches = append(stitches, subStitches...)
+    c.startNewRow()
+	var sts []Stitch
+    for _, parsedExpr := range parsedRow.Content {
+        e, err := c.compileExpr(parsedExpr)
+        if err != nil {
+            return err
         }
-    } else if parsedStitch, ok := expr.(ParsedStitch); ok {
-        st, err := c.compileStitch(parsedStitch)
+		expandedSts, _ := c.expandExpr(e)
+		sts = append(sts, expandedSts...)
+		c.Pos.ColPos += len(expandedSts)
+    }
+	c.CurrentRow.Stitches = sts
+	fmt.Printf(">%s\n", sts)
+
+
+    if c.LastRow != nil && c.LastRow.weight() != c.CurrentRow.advance() {
+        return fmt.Errorf("Unmatch number of stitches. Expected: %d, Received: %d",
+            c.LastRow.weight(), c.CurrentRow.weight())
+    }
+
+    return nil
+}
+
+func (c *Compiler) compileExpr(parsedExpr ParsedExpr) (Expr, error) {
+    switch expr := parsedExpr.(type) {
+    case ParsedStitch:
+        st, err := c.compileStitch(expr)
         if err != nil {
             return nil, err
         }
-        stitches = append(stitches, st)
-    } else if repeatExpr, ok := expr.(ParsedRepeat); ok {
-        switch r := repeatExpr.(type) {
-        case *ParsedRepeatExact:
-            for i := 0; i < r.Count; i++ {
-                subStitches, err := c.compileExpr(r.Content)
-                if err != nil {
-                    return nil, err
-                }
-                stitches = append(stitches, subStitches...)
-            }
-        case *ParsedRepeatNeg:
-			return nil, fmt.Errorf("Not implemented yet.")
-        default:
-            return nil, fmt.Errorf("unknown repeat type: %T", repeatExpr)
-        }
-	} else if actionExpr, ok := expr.(ParsedAction); ok {
-        c.compileParsedAction(actionExpr)
-    } else {
-        return nil, fmt.Errorf("unsupported expression type: %T", expr)
+		// fmt.Printf("Advance of expr %v = %d\n", st, c.exprAdvance(st))
+		return st, nil
+    case *ParsedGroup:
+		group, err := c.compileGroup(expr)
+		if err != nil {
+			return nil, err
+		}
+		// fmt.Printf("Advance of expr %v = %d\n", group, c.exprAdvance(group))
+		return group, nil
+    case ParsedRepeat:
+       	repeat, err := c.compileRepeat(expr) 
+		if err != nil {
+			return nil, err
+		}
+		// fmt.Printf("Advance of expr %v = %d\n", repeat, c.exprAdvance(repeat))
+		return repeat, err
+    default:
+        return nil, fmt.Errorf("unsupported parsed expression type: %T", parsedExpr)
     }
-
-    return stitches, nil
+    
+    return nil,fmt.Errorf("HOLA")
 }
 
-
-func (c *Compiler) printAllRows() {
-	for _, row := range c.Rows {
-		fmt.Printf("Row %d: %v\n", row.Number, row)
+func (c *Compiler) compileStitch(parsedStitch ParsedStitch) (Stitch, error) {
+	switch s := parsedStitch.(type) {
+	case *ParsedKnit:
+		return &Knit{}, nil
+	case *ParsedPurl:
+		return &Purl{}, nil
+	case *ParsedSsk:
+		return &Ssk{}, nil
+	case *ParsedKtog:
+		return &Ktog{Count: s.Count}, nil
+	case *ParsedYo:
+		return &Yo{}, nil
+	case *ParsedCo:
+		return &Co{Count: s.Count}, nil
+	case *ParsedBo:
+		return &Bo{Count: s.Count}, nil
+	default:
+		return nil, fmt.Errorf("Unknown stitch type: %T", parsedStitch)
 	}
+}
+
+func (c *Compiler) compileGroup(parsedGroup *ParsedGroup) (*Group, error){
+		var exprs []Expr
+		for _, subExpr := range parsedGroup.Content {
+			compiledSubExprs, err := c.compileExpr(subExpr)
+			if err != nil {
+				return nil, err
+			}
+			exprs = append(exprs, compiledSubExprs)
+		}
+		return &Group{Content: exprs}, nil
+}
+
+func (c *Compiler) compileRepeat(parsedRepeat ParsedRepeat) (Repeat, error) {
+	switch r := parsedRepeat.(type) {
+	case *ParsedRepeatExact:
+		content, err := c.compileExpr(r.Content)
+		if err != nil {
+			return nil, err
+		}
+		return &RepeatExact{
+			Content: content, 
+			Count:   r.Count,
+		}, nil
+
+	case *ParsedRepeatNeg:
+		content, err := c.compileExpr(r.Content)
+		if err != nil {
+			return nil, err
+		}
+		return &RepeatNeg{
+			Content: content, 
+			Count:   r.Count,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported parsed repeat type: %T", parsedRepeat)
+	}
+}
+
+func (c *Compiler) exprWeight(compileExpr Expr) int {
+    switch expr := compileExpr.(type) {
+    case Stitch:
+		return expr.weight()
+    case *Group:
+		w := 0
+        for _, subExpr := range expr.Content {
+			w += c.exprWeight(subExpr)
+        }
+		return w
+	case *RepeatExact:
+		return expr.Count * c.exprWeight(expr.Content)
+	case *RepeatNeg:
+		return 0
+	}
+	return 0
+}
+
+func (c *Compiler) exprAdvance(compileExpr Expr) int {
+    switch expr := compileExpr.(type) {
+    case Stitch:
+		return expr.advance()
+    case *Group:
+		w := 0
+        for _, subExpr := range expr.Content {
+			w += c.exprAdvance(subExpr)
+        }
+		return w
+	case *RepeatExact:
+		if expr.Count == 0 {
+			if c.LastRow != nil {
+				remaining := c.LastRow.weight() - c.Pos.ColPos
+				perRepeat := c.exprAdvance(expr.Content)
+
+				if perRepeat == 0 {
+					return 0 
+				}
+				return (remaining / perRepeat) * perRepeat
+			}
+			return 0
+		}
+		return expr.Count * c.exprAdvance(expr.Content)
+	case *RepeatNeg:
+		return 0
+	}
+	return 0
 }

@@ -45,12 +45,29 @@ func test_compile(file io.Reader) {
 	for _, section := range pattern {
 		for _, node := range section.Content {
 			if row, ok := node.(*ParsedRow); ok {
-				c.compileRow(row)
+				// Suponiendo que compileRow ahora retorna error
+				if err := c.compileRow(row); err != nil {
+					fmt.Printf("[ERROR] compiling row fila %d: %s\n >> desc: %v\n", c.Pos.RowPos, row, err)
+					// Si quieres detener la ejecución al primer error:
+					return
+				}
+
+				if c.LastRow != nil {
+					// fmt.Printf(
+					// 	"Current row token: %s; Current Compiled row: %s; Expected number of sts: %v; Current number of sts: %v\n",
+					// 	row, c.CurrentRow, c.LastRow.weight(), c.CurrentRow.weight(),
+					// )
+				} else {
+					// fmt.Printf(
+					// 	"Current row token: %s; Current Compiled row: %s; Current number of sts: %v\n",
+					// 	row, c.CurrentRow, c.CurrentRow.weight(),
+					// )
+				}
 			}
 		}
 	}
-	c.printAllRows()
 }
+
 
 
 func main() {

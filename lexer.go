@@ -25,6 +25,8 @@ const (
 	SSK
 	YO
 	KTOG
+	CO
+	BO
 
 	REP
 	SECTION
@@ -50,6 +52,8 @@ var tokens = []string{
 	SSK:		"SSK",
 	YO:			"YO",
 	KTOG:		"KTOG",
+	CO:			"CO",
+	BO:			"BO",
 
 	PLACEMARKER: "PLACEMARKER",
 	REMOVEMARKER: "REMOVEMARKER",
@@ -67,7 +71,7 @@ func (t Token) String() string{
 }
 
 func (t Token) isStitch() bool{
-	if (t == KNIT || t == PURL || t == YO || t == SSK || t == KTOG){
+	if (t == KNIT || t == PURL || t == YO || t == SSK || t == KTOG || t == CO || t == BO){
 		return true
 	} else{
 		return false
@@ -138,6 +142,10 @@ func (l *Lexer) Lex() (Position, Token, string) {
 					return startPos, SECTION, "SECTION"
 				case isKtog(lit):
 					return startPos, KTOG, l.lexKtog(lit)
+				case isCo(lit):
+					return startPos, CO, l.lexCo(lit)
+				case isBo(lit):
+					return startPos, BO, l.lexBo(lit)
 				case lit == "ssk":
 					return startPos, SSK, "SSK"
 				case lit == "yo":
@@ -217,6 +225,15 @@ func (l *Lexer) lexKtog(lit string) string{
 	// Devuelvee el char en segunda posicion. kntog
 	return string(lit[1])
 }
+
+func (l *Lexer) lexCo(lit string) string {
+	return lit[2:]
+}
+
+func (l *Lexer) lexBo(lit string) string {
+	return lit[2:]
+}
+
 func (l *Lexer) lexMarkerName(lit string) string{
 	// Devuelve el ultimo char de la cadena. mA mB ...
 	return string(lit[len(lit)-1:]) 
@@ -234,6 +251,16 @@ func isRemoveMarker(lit string) bool{
 
 func isKtog(lit string) bool {
 	reg, _ := regexp.Compile("^k[0-9]tog")
+	return reg.MatchString(lit)
+}
+
+func isCo(lit string) bool {
+	reg, _ := regexp.Compile(`^co[0-9]+$`)
+	return reg.MatchString(lit)
+}
+
+func isBo(lit string) bool {
+	reg, _ := regexp.Compile(`^bo[0-9]+$`)
 	return reg.MatchString(lit)
 }
 

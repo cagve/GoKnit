@@ -11,16 +11,16 @@ type Node interface {
 	String() string // Function that all nodes implement.
 }
 
-type Expr interface {
+type ParsedExpr interface {
 	Node
 }
 
-type Group struct {
-	Content []Expr
+type ParsedGroup struct {
+	Content []ParsedExpr
 }
 
-func (g *Group) isGroup() {}
-func (g *Group) String() string {
+func (g *ParsedGroup) isGroup() {}
+func (g *ParsedGroup) String() string {
 	var exprs []string
 	for _, expr  := range g.Content {
 		exprs = append(exprs, expr.String())
@@ -29,7 +29,7 @@ func (g *Group) String() string {
 }
 
 type ParsedStitch interface {
-	Expr
+	ParsedExpr
 	isStitch()
 }
 
@@ -51,17 +51,30 @@ type ParsedKtog struct { // REDUCCION
 func (k *ParsedKtog) isStitch() {}
 func (k *ParsedKtog) String() string {return "Knit "+strconv.Itoa(k.Count) + " together"}
 
+
+type ParsedBo struct{
+	Count int
+}
+func (b *ParsedBo) isStitch() {}
+func (b *ParsedBo) String() string {return "Bindoff "+strconv.Itoa(b.Count)}
+
+type ParsedCo struct{
+	Count int
+}
+func (c *ParsedCo) isStitch() {}
+func (c *ParsedCo) String() string {return "Cast on "+strconv.Itoa(c.Count)}
+
 type ParsedYo struct {}
 func (y *ParsedYo) isStitch() {}
 func (y *ParsedYo) String() string {return "Yarn over"}
 
 type ParsedRepeat interface { 
-	Expr
+	ParsedExpr
 	isParsedRepeat()
 }
 
 type ParsedRepeatExact struct {
-	Content Expr
+	Content ParsedExpr
 	Count int
 }
 func (r *ParsedRepeatExact) String() string {
@@ -71,7 +84,7 @@ func (r *ParsedRepeatExact) isParsedRepeat() {}
 
 
 type ParsedRepeatNeg struct {
-	Content Expr
+	Content ParsedExpr
 	Count int
 }
 func (r *ParsedRepeatNeg) String() string {
@@ -93,7 +106,7 @@ func (r *ParsedRepeatBlock) String() string {
 }
 
 type ParsedAction interface{
-	Expr
+	ParsedExpr
 	IsParsedAction()
 }
 type PlaceMarker struct {
@@ -109,7 +122,7 @@ func (r *RemoveMarker) IsParsedAction() {}
 func (r *RemoveMarker) String() string{ return "Remove Marker "+r.Name }
 
 type ParsedRow struct {
-	Content []Expr
+	Content []ParsedExpr
 }
 func (r *ParsedRow) String() string {
 	var exprs []string
@@ -163,6 +176,29 @@ func (p *Parser) unscan()  {
 	p.buf.n = 1
 }
 
+func (p *Parser) parseBo() (*ParsedBo, error){
+	pos, tok, lit := p.scan()
+	if tok != BO {
+		return &ParsedBo{}, fmt.Errorf("Expected BO, received %q in %q", tok, pos)
+	}
+	i, err  := strconv.Atoi(lit)
+	if err!= nil  {
+		return nil, fmt.Errorf("invalid epeition count: %q", lit)
+	}
+	return &ParsedBo{Count: i}, nil
+}
+func (p *Parser) parseCo() (*ParsedCo, error){
+	pos, tok, lit := p.scan()
+	if tok != CO {
+		return &ParsedCo{}, fmt.Errorf("Expected CO, received %q in %q", tok, pos)
+	}
+	i, err  := strconv.Atoi(lit)
+	if err!= nil  {
+		return nil, fmt.Errorf("invalid epeition count: %q", lit)
+	}
+	return &ParsedCo{Count: i}, nil
+}
+
 func (p *Parser) parseKtog() (*ParsedKtog, error){
 	pos, tok, lit := p.scan()
 	if tok != KTOG {
@@ -175,7 +211,7 @@ func (p *Parser) parseKtog() (*ParsedKtog, error){
 	return &ParsedKtog{Count: i}, nil
 }
 
-func (p *Parser) parseExpr() (Expr, error) {
+func (p *Parser) parseExpr() (ParsedExpr, error) {
 	pos, tok, _ := p.scan()
 	switch {
 	case tok.isStitch():
@@ -237,6 +273,12 @@ func (p *Parser) parseStitch() (ParsedStitch, error){
 		return &ParsedSsk{}, nil
 	case YO:
 		return &ParsedYo{}, nil
+	case CO:
+		p.unscan()
+		return p.parseCo()
+	case BO:
+		p.unscan()
+		return p.parseBo()
 	case KTOG:
 		p.unscan()
 		return p.parseKtog()
@@ -246,8 +288,8 @@ func (p *Parser) parseStitch() (ParsedStitch, error){
 }
 
 
-func (p *Parser) parseGroup() (Expr, error){
-	var exprs []Expr
+func (p *Parser) parseGroup() (ParsedExpr, error){
+	var exprs []ParsedExpr
 	pos, tok, _ := p.scan()
     if tok != PAROPEN {
         return nil, fmt.Errorf("expected '(', got %q at %v", tok, pos)
@@ -265,10 +307,10 @@ func (p *Parser) parseGroup() (Expr, error){
 		}
 		exprs = append(exprs, expr)
 	}
-	return &Group{Content: exprs}, nil
+	return &ParsedGroup{Content: exprs}, nil
 }
 
-func (p *Parser) parseParsedRepeat(content Expr) (Expr, error) {
+func (p *Parser) parseParsedRepeat(content ParsedExpr) (ParsedExpr, error) {
 	pos, tok, lit := p.scan()
 	switch tok {
 	case INT:
@@ -294,7 +336,7 @@ func (p *Parser) parseParsedRepeat(content Expr) (Expr, error) {
 
 
 func (p *Parser) parseRow() (*ParsedRow, error){
-	var exprs []Expr
+	var exprs []ParsedExpr
 	for {
 		_, tok, _ := p.scan()
 		if tok == SEMICOLON {
