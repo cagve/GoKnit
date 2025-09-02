@@ -54,9 +54,9 @@ func (s *Ssk) advance() int   { return 2 }
 type Ktog struct { // REDUCCION
 	Count int
 }
-func (k *Ktog) String() string { return "Knit " + strconv.Itoa(k.Count) + " together" }
+func (k *Ktog) String() string { return "K" + strconv.Itoa(k.Count) + "TOG" }
 func (k *Ktog) weight() int    { return 1 }
-func (k *Ktog) advance() int   { return 2 }
+func (k *Ktog) advance() int   { return k.Count }
 
 type Co struct {
 	Count int
@@ -73,7 +73,7 @@ func (b *Bo) weight() int    { return 0}
 func (b *Bo) advance() int   { return b.Count }
 
 type Yo struct{}
-func (y *Yo) String() string { return "Yarn over" }
+func (y *Yo) String() string { return "Yo" }
 func (y *Yo) weight() int    { return 1 }
 func (y *Yo) advance() int   { return 0 }
 
@@ -310,9 +310,16 @@ func (c *Compiler) compileRow(parsedRow *ParsedRow) error {
         if err != nil {
             return err
         }
-		expandedSts, _ := c.expandExpr(e)
+		expandedSts, err := c.expandExpr(e)
+		if err != nil {
+			return err
+		}
 		sts = append(sts, expandedSts...)
-		c.Pos.ColPos += len(expandedSts)
+		advance := 0
+		for _, st := range(expandedSts){
+			advance += st.advance()
+		}
+		c.Pos.ColPos += advance
     }
 	c.CurrentRow.Stitches = sts
 	fmt.Printf(">%s\n", sts)
@@ -320,7 +327,7 @@ func (c *Compiler) compileRow(parsedRow *ParsedRow) error {
 
     if c.LastRow != nil && c.LastRow.weight() != c.CurrentRow.advance() {
         return fmt.Errorf("Unmatch number of stitches. Expected: %d, Received: %d",
-            c.LastRow.weight(), c.CurrentRow.weight())
+            c.LastRow.weight(), c.CurrentRow.advance())
     }
 
     return nil

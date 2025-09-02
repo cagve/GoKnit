@@ -1,5 +1,4 @@
 section rib {
-	co6;
 	k k k k k k;
 	p p p p p p;
 	(k p) (k p) (k p);
@@ -7,7 +6,8 @@ section rib {
 	k*2 (p k)*0;
 	p*-3 k*0;
 	(p k)*-2 k k; 
-	bo6;
+	k k2tog k yo k*0;
+	k*0;
 }
 
 	
