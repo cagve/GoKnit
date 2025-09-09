@@ -28,6 +28,12 @@ const (
 	CO
 	BO
 
+	//Cables
+	CABLE_FWD 		// Cable hacia adelante/derecha (e.g., 2/2 RC)
+    CABLE_BKD 		// Cable hacia atrás/izquierda (e.g.,/ 2/2 LC)
+    PURL_CABLE_FWD 	// Cable de revés a la derecha
+    PURL_CABLE_BKD 	// Cable de revés a la izquierda
+
 	REP
 	SECTION
 	REPBLOCK
@@ -55,6 +61,12 @@ var tokens = []string{
 	CO:			"CO",
 	BO:			"BO",
 
+	// CABLES
+	CABLE_FWD: "CABLE_FWD",
+	CABLE_BKD: "CABLE_BKD",
+	PURL_CABLE_FWD: "PURL_CABLE_FWD",
+	PURL_CABLE_BKD: "PURL_CABLE_BKD",
+
 	PLACEMARKER: "PLACEMARKER",
 	REMOVEMARKER: "REMOVEMARKER",
 	IDENT:		"IDENT",
@@ -71,7 +83,7 @@ func (t Token) String() string{
 }
 
 func (t Token) isStitch() bool{
-	if (t == KNIT || t == PURL || t == YO || t == SSK || t == KTOG || t == CO || t == BO){
+	if (t == KNIT || t == PURL || t == YO || t == SSK || t == KTOG || t == CO || t == BO || t == CABLE_BKD || t == CABLE_FWD || t == PURL_CABLE_BKD || t == PURL_CABLE_FWD){
 		return true
 	} else{
 		return false
@@ -136,6 +148,14 @@ func (l *Lexer) Lex() (Position, Token, string) {
 				l.backup()
 				lit := l.lexIdent()
 				switch {
+				case isCableFwd(lit):
+					return startPos, CABLE_FWD, l.lexCableParams(lit) 
+				case isCableBkd(lit):
+					return startPos, CABLE_BKD, l.lexCableParams(lit)
+				case isPurlCableFwd(lit):
+					return startPos, PURL_CABLE_FWD, l.lexCableParams(lit) 
+				case isPurlCableBkd(lit):
+					return startPos, PURL_CABLE_BKD, l.lexCableParams(lit)
 				case lit == "repeat":
 					return startPos, REPBLOCK, "REPBLOCK"
 				case lit == "section":
@@ -212,7 +232,7 @@ func (l *Lexer) lexIdent() string {
 		}
 
 		l.pos.column ++ 
-		if unicode.IsLetter(r) || r == '_' || unicode.IsDigit(r){
+		if unicode.IsLetter(r) || r == '_' || r == '/' || unicode.IsDigit(r){
 			lit = lit + string(r)
 		}else {
 			l.backup()
@@ -264,3 +284,34 @@ func isBo(lit string) bool {
 	return reg.MatchString(lit)
 }
 
+func isCableFwd(lit string) bool {
+    reg, _ := regexp.Compile(`^c[0-9]+b$|^c[0-9]+/[0-9]+f$`)
+    return reg.MatchString(lit)
+}
+
+func isCableBkd(lit string) bool {
+    reg, _ := regexp.Compile(`^c[0-9]+b$|^c[0-9]+/[0-9]+b$`)
+    return reg.MatchString(lit)
+}
+
+func isPurlCableFwd(lit string) bool {
+    reg, _ := regexp.Compile(`^p[0-9]+f$|^p[0-9]+/[0-9]+f$`)
+    return reg.MatchString(lit)
+}
+
+func isPurlCableBkd(lit string) bool {
+    reg, _ := regexp.Compile(`^p[0-9]+b$|^p[0-9]+/[0-9]+b$`)
+    return reg.MatchString(lit)
+}
+
+func (l *Lexer) lexCableParams(lit string) string {
+    re := regexp.MustCompile(`[0-9]+`)
+    matches := re.FindAllString(lit, -1)
+    
+    if len(matches) == 1 {
+        return matches[0] + "," + matches[0]
+    } else if len(matches) >= 2 {
+        return matches[0] + "," + matches[1]
+    }
+    return "1,0" 
+}

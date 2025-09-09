@@ -27,26 +27,32 @@ type Stitch interface {
 }
 
 // Implementación de isExpr() para todos los stitches
-func (k *Knit) isExpr()  {}
-func (p *Purl) isExpr()  {}
-func (s *Ssk) isExpr()   {}
-func (k *Ktog) isExpr()  {}
-func (y *Yo) isExpr()    {}
-func (c *Co) isExpr()    {}
-func (c *Bo) isExpr()    {}
-func (g *Group) isExpr() {}
+func (k *Knit) isExpr()         {}
+func (p *Purl) isExpr()         {}
+func (s *Ssk) isExpr()          {}
+func (k *Ktog) isExpr()         {}
+func (y *Yo) isExpr()           {}
+func (c *Co) isExpr()           {}
+func (c *Bo) isExpr()           {}
+func (c *CableBkd) isExpr()     {}
+func (c *CableFwd) isExpr()     {}
+func (c *PurlCableBkd) isExpr() {}
+func (c *PurlCableFwd) isExpr() {}
+func (g *Group) isExpr()        {}
 
 type Knit struct{}
+
 func (k *Knit) String() string { return "Knit" }
 func (k *Knit) weight() int    { return 1 }
 func (k *Knit) advance() int   { return 1 }
 
 type Purl struct{}
+
 func (p *Purl) String() string { return "Purl" }
 func (p *Purl) weight() int    { return 1 }
 func (p *Purl) advance() int   { return 1 }
 
-type Ssk struct{} // REDUCCION
+type Ssk struct{}             // REDUCCION
 func (s *Ssk) String() string { return "Slip slip knit" }
 func (s *Ssk) weight() int    { return 1 }
 func (s *Ssk) advance() int   { return 2 }
@@ -54,6 +60,7 @@ func (s *Ssk) advance() int   { return 2 }
 type Ktog struct { // REDUCCION
 	Count int
 }
+
 func (k *Ktog) String() string { return "K" + strconv.Itoa(k.Count) + "TOG" }
 func (k *Ktog) weight() int    { return 1 }
 func (k *Ktog) advance() int   { return k.Count }
@@ -61,21 +68,61 @@ func (k *Ktog) advance() int   { return k.Count }
 type Co struct {
 	Count int
 }
-func (c *Co) String() string { return "Cast on" + strconv.Itoa(c.Count)}
+
+func (c *Co) String() string { return "Cast on" + strconv.Itoa(c.Count) }
 func (c *Co) weight() int    { return c.Count }
 func (c *Co) advance() int   { return 0 }
 
 type Bo struct {
 	Count int
 }
-func (b *Bo) String() string { return "Bind off" + strconv.Itoa(b.Count)}
-func (b *Bo) weight() int    { return 0}
+
+func (b *Bo) String() string { return "Bind off" + strconv.Itoa(b.Count) }
+func (b *Bo) weight() int    { return 0 }
 func (b *Bo) advance() int   { return b.Count }
 
 type Yo struct{}
+
 func (y *Yo) String() string { return "Yo" }
 func (y *Yo) weight() int    { return 1 }
 func (y *Yo) advance() int   { return 0 }
+
+// CABLES
+type CableFwd struct {
+    FrontCount     int
+    BackCount int
+}
+
+func (c *CableFwd) String() string { return fmt.Sprintf("C%d/%dF", c.FrontCount, c.BackCount) }
+func (c *CableFwd) weight() int  { return c.FrontCount + c.BackCount }
+func (c *CableFwd) advance() int { return c.weight() }
+
+type CableBkd struct {
+    FrontCount     int
+    BackCount int
+}
+
+func (c *CableBkd) String() string { return fmt.Sprintf("C%d/%dB", c.FrontCount, c.BackCount) }
+func (c *CableBkd) weight() int    { return c.FrontCount + c.BackCount }
+func (c *CableBkd) advance() int   { return c.weight() }
+
+type PurlCableFwd struct {
+    FrontCount     int
+    BackCount int
+}
+
+func (c *PurlCableFwd) String() string { return fmt.Sprintf("P%d/%dF", c.FrontCount, c.BackCount) }
+func (c *PurlCableFwd) weight() int    { return c.FrontCount + c.BackCount }
+func (c *PurlCableFwd) advance() int   { return c.weight() }
+
+type PurlCableBkd struct {
+    FrontCount     int
+    BackCount int
+}
+
+func (c *PurlCableBkd) String() string { return fmt.Sprintf("P%d/%dB", c.FrontCount, c.BackCount) }
+func (c *PurlCableBkd) weight() int  { return c.FrontCount + c.BackCount }
+func (c *PurlCableBkd) advance() int { return c.weight() }
 
 // Grupo - análogo a Group del parser
 type Group struct {
@@ -90,6 +137,19 @@ func (g *Group) String() string {
 	return "(" + strings.Join(exprs, ", ") + ")"
 }
 
+type RepeatBlock interface {
+	Expr
+	isRepeatBlock()
+}
+
+type RepeatBlockExact struct {
+	Content []Row
+	Count   int
+}
+
+func (r RepeatBlockExact) isExpr()        {}
+func (r RepeatBlockExact) isRepeatBlock() {}
+func (r RepeatBlockExact) String() string { return "not implementted" }
 
 type Repeat interface {
 	Expr
@@ -213,9 +273,9 @@ func (c *Compiler) addStitch(st Stitch) error {
 	return nil
 }
 
-func (c *Compiler) expandGroup(compiledExpr Expr) ([]Stitch, error){
+func (c *Compiler) expandGroup(compiledExpr Expr) ([]Stitch, error) {
 	var sts []Stitch
-    switch expr := compiledExpr.(type) {
+	switch expr := compiledExpr.(type) {
 	case *Group:
 		for _, expr := range expr.Content {
 			expanded, _ := c.expandExpr(expr)
@@ -229,21 +289,21 @@ func (c *Compiler) expandGroup(compiledExpr Expr) ([]Stitch, error){
 
 func (c *Compiler) expandRepeat(compiledExpr Expr) ([]Stitch, error) {
 	var sts []Stitch
-	switch expr := compiledExpr.(type){
+	switch expr := compiledExpr.(type) {
 	case *RepeatExact:
 		times := expr.Count
-        if times == 0 {
-            if c.LastRow != nil {
-                remaining := c.LastRow.weight() - (c.Pos.ColPos - 1)
-                perRepeat := c.exprAdvance(expr.Content)
-                if perRepeat == 0 {
-                    return nil, fmt.Errorf("repeat content has zero advance, cannot calculate repetitions")
-                }
-                times = remaining / perRepeat
-            } else {
-                return nil, fmt.Errorf("cannot infer repeat count: no previous row")
-            }
-        }
+		if times == 0 {
+			if c.LastRow != nil {
+				remaining := c.LastRow.weight() - (c.Pos.ColPos - 1)
+				perRepeat := c.exprAdvance(expr.Content)
+				if perRepeat == 0 {
+					return nil, fmt.Errorf("repeat content has zero advance, cannot calculate repetitions")
+				}
+				times = remaining / perRepeat
+			} else {
+				return nil, fmt.Errorf("cannot infer repeat count: no previous row")
+			}
+		}
 		for range times {
 			expanded, err := c.expandExpr(expr.Content)
 			if err != nil {
@@ -265,7 +325,7 @@ func (c *Compiler) expandRepeat(compiledExpr Expr) ([]Stitch, error) {
 			return nil, fmt.Errorf("repeat content has zero advance, cannot calculate repetitions")
 		}
 
-		times := max((remaining - expr.Count) / perRepeat, 0)
+		times := max((remaining-expr.Count)/perRepeat, 0)
 		for range times {
 			expanded, err := c.expandExpr(expr.Content)
 			if err != nil {
@@ -279,12 +339,12 @@ func (c *Compiler) expandRepeat(compiledExpr Expr) ([]Stitch, error) {
 	return sts, nil
 }
 
-func (c *Compiler) expandExpr(compiledExpr Expr) ([]Stitch, error){
-	var sts []Stitch	
-    switch expr := compiledExpr.(type) {
+func (c *Compiler) expandExpr(compiledExpr Expr) ([]Stitch, error) {
+	var sts []Stitch
+	switch expr := compiledExpr.(type) {
 	case Stitch:
 		sts = append(sts, expr)
-		return  sts, nil
+		return sts, nil
 	case *Group:
 		sts, err := c.expandGroup(expr)
 		if err != nil {
@@ -297,70 +357,63 @@ func (c *Compiler) expandExpr(compiledExpr Expr) ([]Stitch, error){
 			return nil, err
 		}
 		return sts, nil
-	default: 
-        return nil, fmt.Errorf("unsupported parsed expression type: %T", compiledExpr)
+	default:
+		return nil, fmt.Errorf("unsupported parsed expression type: %T", compiledExpr)
 	}
 }
 
 func (c *Compiler) compileRow(parsedRow *ParsedRow) error {
-    c.startNewRow()
+	c.startNewRow()
 	var sts []Stitch
-    for _, parsedExpr := range parsedRow.Content {
-        e, err := c.compileExpr(parsedExpr)
-        if err != nil {
-            return err
-        }
+	for _, parsedExpr := range parsedRow.Content {
+		e, err := c.compileExpr(parsedExpr)
+		if err != nil {
+			return err
+		}
 		expandedSts, err := c.expandExpr(e)
 		if err != nil {
 			return err
 		}
 		sts = append(sts, expandedSts...)
 		advance := 0
-		for _, st := range(expandedSts){
+		for _, st := range expandedSts {
 			advance += st.advance()
 		}
 		c.Pos.ColPos += advance
-    }
+	}
 	c.CurrentRow.Stitches = sts
 	fmt.Printf(">%s\n", sts)
+	if c.LastRow != nil && c.LastRow.weight() != c.CurrentRow.advance() {
+		return fmt.Errorf("Unmatch number of stitches. Expected: %d, Received: %d",
+			c.LastRow.weight(), c.CurrentRow.advance())
+	}
 
-
-    if c.LastRow != nil && c.LastRow.weight() != c.CurrentRow.advance() {
-        return fmt.Errorf("Unmatch number of stitches. Expected: %d, Received: %d",
-            c.LastRow.weight(), c.CurrentRow.advance())
-    }
-
-    return nil
+	return nil
 }
 
 func (c *Compiler) compileExpr(parsedExpr ParsedExpr) (Expr, error) {
-    switch expr := parsedExpr.(type) {
-    case ParsedStitch:
-        st, err := c.compileStitch(expr)
-        if err != nil {
-            return nil, err
-        }
-		// fmt.Printf("Advance of expr %v = %d\n", st, c.exprAdvance(st))
+	switch expr := parsedExpr.(type) {
+	case ParsedStitch:
+		st, err := c.compileStitch(expr)
+		if err != nil {
+			return nil, err
+		}
 		return st, nil
-    case *ParsedGroup:
+	case *ParsedGroup:
 		group, err := c.compileGroup(expr)
 		if err != nil {
 			return nil, err
 		}
-		// fmt.Printf("Advance of expr %v = %d\n", group, c.exprAdvance(group))
 		return group, nil
-    case ParsedRepeat:
-       	repeat, err := c.compileRepeat(expr) 
+	case ParsedRepeat:
+		repeat, err := c.compileRepeat(expr)
 		if err != nil {
 			return nil, err
 		}
-		// fmt.Printf("Advance of expr %v = %d\n", repeat, c.exprAdvance(repeat))
 		return repeat, err
-    default:
-        return nil, fmt.Errorf("unsupported parsed expression type: %T", parsedExpr)
-    }
-    
-    return nil,fmt.Errorf("HOLA")
+	default:
+		return nil, fmt.Errorf("unsupported parsed expression type: %T", parsedExpr)
+	}
 }
 
 func (c *Compiler) compileStitch(parsedStitch ParsedStitch) (Stitch, error) {
@@ -379,21 +432,38 @@ func (c *Compiler) compileStitch(parsedStitch ParsedStitch) (Stitch, error) {
 		return &Co{Count: s.Count}, nil
 	case *ParsedBo:
 		return &Bo{Count: s.Count}, nil
+	case *ParsedCableBkd:
+		return &CableBkd{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
+	case *ParsedCableFwd:
+		return &CableFwd{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
+	case *ParsedPurlCableBkd:
+		return &PurlCableBkd{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
+	case *ParsedPurlCableFwd:
+		return &PurlCableFwd{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
 	default:
 		return nil, fmt.Errorf("Unknown stitch type: %T", parsedStitch)
 	}
 }
 
-func (c *Compiler) compileGroup(parsedGroup *ParsedGroup) (*Group, error){
-		var exprs []Expr
-		for _, subExpr := range parsedGroup.Content {
-			compiledSubExprs, err := c.compileExpr(subExpr)
-			if err != nil {
-				return nil, err
-			}
-			exprs = append(exprs, compiledSubExprs)
+func (c *Compiler) compileGroup(parsedGroup *ParsedGroup) (*Group, error) {
+	var exprs []Expr
+	for _, subExpr := range parsedGroup.Content {
+		compiledSubExprs, err := c.compileExpr(subExpr)
+		if err != nil {
+			return nil, err
 		}
-		return &Group{Content: exprs}, nil
+		exprs = append(exprs, compiledSubExprs)
+	}
+	return &Group{Content: exprs}, nil
+}
+
+func (c *Compiler) compileRepeatBlock(parsedRepeatBlock *ParsedRepeatBlock) error {
+	for i := 0; i < parsedRepeatBlock.Count; i++ {
+		for _, row := range parsedRepeatBlock.Content {
+			c.compileRow(row)
+		}
+	}
+	return nil
 }
 
 func (c *Compiler) compileRepeat(parsedRepeat ParsedRepeat) (Repeat, error) {
@@ -404,7 +474,7 @@ func (c *Compiler) compileRepeat(parsedRepeat ParsedRepeat) (Repeat, error) {
 			return nil, err
 		}
 		return &RepeatExact{
-			Content: content, 
+			Content: content,
 			Count:   r.Count,
 		}, nil
 
@@ -414,7 +484,7 @@ func (c *Compiler) compileRepeat(parsedRepeat ParsedRepeat) (Repeat, error) {
 			return nil, err
 		}
 		return &RepeatNeg{
-			Content: content, 
+			Content: content,
 			Count:   r.Count,
 		}, nil
 	default:
@@ -423,14 +493,14 @@ func (c *Compiler) compileRepeat(parsedRepeat ParsedRepeat) (Repeat, error) {
 }
 
 func (c *Compiler) exprWeight(compileExpr Expr) int {
-    switch expr := compileExpr.(type) {
-    case Stitch:
+	switch expr := compileExpr.(type) {
+	case Stitch:
 		return expr.weight()
-    case *Group:
+	case *Group:
 		w := 0
-        for _, subExpr := range expr.Content {
+		for _, subExpr := range expr.Content {
 			w += c.exprWeight(subExpr)
-        }
+		}
 		return w
 	case *RepeatExact:
 		return expr.Count * c.exprWeight(expr.Content)
@@ -441,14 +511,14 @@ func (c *Compiler) exprWeight(compileExpr Expr) int {
 }
 
 func (c *Compiler) exprAdvance(compileExpr Expr) int {
-    switch expr := compileExpr.(type) {
-    case Stitch:
+	switch expr := compileExpr.(type) {
+	case Stitch:
 		return expr.advance()
-    case *Group:
+	case *Group:
 		w := 0
-        for _, subExpr := range expr.Content {
+		for _, subExpr := range expr.Content {
 			w += c.exprAdvance(subExpr)
-        }
+		}
 		return w
 	case *RepeatExact:
 		if expr.Count == 0 {
@@ -457,7 +527,7 @@ func (c *Compiler) exprAdvance(compileExpr Expr) int {
 				perRepeat := c.exprAdvance(expr.Content)
 
 				if perRepeat == 0 {
-					return 0 
+					return 0
 				}
 				return (remaining / perRepeat) * perRepeat
 			}

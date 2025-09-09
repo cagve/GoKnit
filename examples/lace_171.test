@@ -1,0 +1,11 @@
+section lace_171{
+	co12;
+	p*4 k*8;
+	k*0;
+	p*4 k*8;
+	k*0;
+	p*4 k*8;
+	p*8 k*4;
+	p*4 (k2tog yo)*2 k*4;
+	p*8 k*4;
+}

@@ -68,6 +68,44 @@ type ParsedYo struct {}
 func (y *ParsedYo) isStitch() {}
 func (y *ParsedYo) String() string {return "Yarn over"}
 
+
+type ParsedCableFwd struct {
+    FrontCount int 
+	BackCount int
+}
+func (c *ParsedCableFwd) isStitch() {}
+func (c *ParsedCableFwd) String() string {
+    return fmt.Sprintf("Cable %d/%d Front", c.FrontCount, c.BackCount)
+}
+
+type ParsedCableBkd struct {
+    FrontCount int 
+	BackCount int
+}
+func (c *ParsedCableBkd) isStitch() {}
+func (c *ParsedCableBkd) String() string {
+    return fmt.Sprintf("Cable %d/%d Front", c.FrontCount, c.BackCount)
+}
+
+// Opcional: Para cables de revés si decides implementarlos (P1F, P1B)
+type ParsedPurlCableFwd struct {
+    FrontCount int 
+	BackCount int
+}
+func (c *ParsedPurlCableFwd) isStitch() {}
+func (c *ParsedPurlCableFwd) String() string {
+    return fmt.Sprintf("Cable %d/%d Front", c.FrontCount, c.BackCount)
+}
+
+type ParsedPurlCableBkd struct {
+    FrontCount int 
+	BackCount int
+}
+func (c *ParsedPurlCableBkd) isStitch() {}
+func (c *ParsedPurlCableBkd) String() string {
+    return fmt.Sprintf("Cable %d/%d Front", c.FrontCount, c.BackCount)
+}
+
 type ParsedRepeat interface { 
 	ParsedExpr
 	isParsedRepeat()
@@ -199,6 +237,47 @@ func (p *Parser) parseCo() (*ParsedCo, error){
 	return &ParsedCo{Count: i}, nil
 }
 
+func (p *Parser) parseCable() (ParsedStitch, error) {
+    pos, tok, lit := p.scan()
+    
+    // Parsear los parámetros "cableCount,backgroundCount"
+    parts := strings.Split(lit, ",")
+    if len(parts) != 2 {
+        return nil, fmt.Errorf("invalid cable parameters %q at %v", lit, pos)
+    }
+    
+    cableCount, err1 := strconv.Atoi(parts[0])
+    backgroundCount, err2 := strconv.Atoi(parts[1])
+    if err1 != nil || err2 != nil {
+        return nil, fmt.Errorf("invalid cable counts %q at %v", lit, pos)
+    }
+
+    switch tok {
+    case CABLE_FWD:
+        return &ParsedCableFwd{
+            FrontCount: cableCount, 
+            BackCount: backgroundCount,
+        }, nil
+    case CABLE_BKD:
+        return &ParsedCableBkd{
+            FrontCount: cableCount,
+            BackCount: backgroundCount,
+        }, nil
+    case PURL_CABLE_FWD:
+        return &ParsedPurlCableFwd{
+            FrontCount: cableCount,
+            BackCount: backgroundCount,
+        }, nil
+    case PURL_CABLE_BKD:
+        return &ParsedPurlCableBkd{
+            FrontCount: cableCount,
+            BackCount: backgroundCount,
+        }, nil
+    default:
+        return nil, fmt.Errorf("expected cable token, got %q at %v", tok, pos)
+    }
+}
+
 func (p *Parser) parseKtog() (*ParsedKtog, error){
 	pos, tok, lit := p.scan()
 	if tok != KTOG {
@@ -282,6 +361,9 @@ func (p *Parser) parseStitch() (ParsedStitch, error){
 	case KTOG:
 		p.unscan()
 		return p.parseKtog()
+	case CABLE_FWD, CABLE_BKD, PURL_CABLE_FWD, PURL_CABLE_BKD:
+		p.unscan() 
+		return p.parseCable()
 	default:
 		return nil, fmt.Errorf("extected stitch, got %q in %q", tok, pos)
 	}
