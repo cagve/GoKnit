@@ -37,6 +37,7 @@ type ParsedKnit struct {}
 func (k *ParsedKnit) isStitch() {}
 func (k *ParsedKnit) String() string {return "Knit"}
 
+
 type ParsedPurl struct {}
 func (p *ParsedPurl) isStitch() {}
 func (p *ParsedPurl) String() string {return "Purl"}
@@ -69,40 +70,40 @@ func (y *ParsedYo) isStitch() {}
 func (y *ParsedYo) String() string {return "Yarn over"}
 
 
-type ParsedCableFwd struct {
+type ParsedCableRC struct {
     FrontCount int 
 	BackCount int
 }
-func (c *ParsedCableFwd) isStitch() {}
-func (c *ParsedCableFwd) String() string {
+func (c *ParsedCableRC) isStitch() {}
+func (c *ParsedCableRC) String() string {
     return fmt.Sprintf("Cable %d/%d Front", c.FrontCount, c.BackCount)
 }
 
-type ParsedCableBkd struct {
+type ParsedCableLC struct {
     FrontCount int 
 	BackCount int
 }
-func (c *ParsedCableBkd) isStitch() {}
-func (c *ParsedCableBkd) String() string {
+func (c *ParsedCableLC) isStitch() {}
+func (c *ParsedCableLC) String() string {
     return fmt.Sprintf("Cable %d/%d Front", c.FrontCount, c.BackCount)
 }
 
 // Opcional: Para cables de revés si decides implementarlos (P1F, P1B)
-type ParsedPurlCableFwd struct {
+type ParsedPurlCableRC struct {
     FrontCount int 
 	BackCount int
 }
-func (c *ParsedPurlCableFwd) isStitch() {}
-func (c *ParsedPurlCableFwd) String() string {
+func (c *ParsedPurlCableRC) isStitch() {}
+func (c *ParsedPurlCableRC) String() string {
     return fmt.Sprintf("Cable %d/%d Front", c.FrontCount, c.BackCount)
 }
 
-type ParsedPurlCableBkd struct {
+type ParsedPurlCableLC struct {
     FrontCount int 
 	BackCount int
 }
-func (c *ParsedPurlCableBkd) isStitch() {}
-func (c *ParsedPurlCableBkd) String() string {
+func (c *ParsedPurlCableLC) isStitch() {}
+func (c *ParsedPurlCableLC) String() string {
     return fmt.Sprintf("Cable %d/%d Front", c.FrontCount, c.BackCount)
 }
 
@@ -253,29 +254,53 @@ func (p *Parser) parseCable() (ParsedStitch, error) {
     }
 
     switch tok {
-    case CABLE_FWD:
-        return &ParsedCableFwd{
+    case CABLE_RC:
+        return &ParsedCableRC{
             FrontCount: cableCount, 
             BackCount: backgroundCount,
         }, nil
-    case CABLE_BKD:
-        return &ParsedCableBkd{
+    case CABLE_LC:
+        return &ParsedCableLC{
             FrontCount: cableCount,
             BackCount: backgroundCount,
         }, nil
-    case PURL_CABLE_FWD:
-        return &ParsedPurlCableFwd{
+    case PURL_CABLE_RC:
+        return &ParsedPurlCableRC{
             FrontCount: cableCount,
             BackCount: backgroundCount,
         }, nil
-    case PURL_CABLE_BKD:
-        return &ParsedPurlCableBkd{
+    case PURL_CABLE_LC:
+        return &ParsedPurlCableLC{
             FrontCount: cableCount,
             BackCount: backgroundCount,
         }, nil
     default:
         return nil, fmt.Errorf("expected cable token, got %q at %v", tok, pos)
     }
+}
+
+func (p *Parser) parseKnitRepeat() (*ParsedRepeatExact, error){
+	pos, tok, lit := p.scan()
+	if tok != KNIT_REPEAT {
+		return nil, fmt.Errorf("Expected Knit repeat, received %q in %q", tok, pos)
+	}
+	i, err  := strconv.Atoi(lit)
+	if err!= nil  {
+		return nil, fmt.Errorf("invalid epeition count: %q", lit)
+	}
+	return &ParsedRepeatExact{Content:&ParsedKnit{}, Count: i}, nil
+}
+
+func (p *Parser) parsePurlRepeat() (*ParsedRepeatExact, error){
+	pos, tok, lit := p.scan()
+	if tok != PURL_REPEAT {
+		return nil, fmt.Errorf("Expected PURL repeat, received %q in %q", tok, pos)
+	}
+	i, err  := strconv.Atoi(lit)
+	if err!= nil  {
+		return nil, fmt.Errorf("invalid epeition count: %q", lit)
+	}
+	return &ParsedRepeatExact{Content:&ParsedPurl{}, Count: i}, nil
 }
 
 func (p *Parser) parseKtog() (*ParsedKtog, error){
@@ -338,7 +363,7 @@ func (p *Parser) parseExpr() (ParsedExpr, error) {
 }
 
 
-func (p *Parser) parseStitch() (ParsedStitch, error){
+func (p *Parser) parseStitch() (ParsedExpr, error){
 	pos, tok, _ := p.scan()
 	if !tok.isStitch() {
 		return nil, fmt.Errorf("extected stitch, got %q in %q", tok, pos)
@@ -358,10 +383,16 @@ func (p *Parser) parseStitch() (ParsedStitch, error){
 	case BO:
 		p.unscan()
 		return p.parseBo()
+	case KNIT_REPEAT:
+		p.unscan()
+		return p.parseKnitRepeat()
+	case PURL_REPEAT:
+		p.unscan()
+		return p.parsePurlRepeat()
 	case KTOG:
 		p.unscan()
 		return p.parseKtog()
-	case CABLE_FWD, CABLE_BKD, PURL_CABLE_FWD, PURL_CABLE_BKD:
+	case CABLE_RC, CABLE_LC, PURL_CABLE_RC, PURL_CABLE_LC:
 		p.unscan() 
 		return p.parseCable()
 	default:

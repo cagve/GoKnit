@@ -28,11 +28,15 @@ const (
 	CO
 	BO
 
+	//REPEAT STITCHES
+	KNIT_REPEAT
+	PURL_REPEAT
+
 	//Cables
-	CABLE_FWD 		// Cable hacia adelante/derecha (e.g., 2/2 RC)
-    CABLE_BKD 		// Cable hacia atrás/izquierda (e.g.,/ 2/2 LC)
-    PURL_CABLE_FWD 	// Cable de revés a la derecha
-    PURL_CABLE_BKD 	// Cable de revés a la izquierda
+	CABLE_RC 		// Cable hacia adelante/derecha (e.g., 2/2 RC)
+    CABLE_LC 		// Cable hacia atrás/izquierda (e.g.,/ 2/2 LC)
+    PURL_CABLE_RC 	// Cable de revés a la derecha
+    PURL_CABLE_LC 	// Cable de revés a la izquierda
 
 	REP
 	SECTION
@@ -60,12 +64,15 @@ var tokens = []string{
 	KTOG:		"KTOG",
 	CO:			"CO",
 	BO:			"BO",
+	
+	KNIT_REPEAT:		"KNIT_REPEAT",
+	PURL_REPEAT:		"PURL_REPEAT",
 
 	// CABLES
-	CABLE_FWD: "CABLE_FWD",
-	CABLE_BKD: "CABLE_BKD",
-	PURL_CABLE_FWD: "PURL_CABLE_FWD",
-	PURL_CABLE_BKD: "PURL_CABLE_BKD",
+	CABLE_RC: "CABLE_RC",
+	CABLE_LC: "CABLE_LC",
+	PURL_CABLE_RC: "PURL_CABLE_RC",
+	PURL_CABLE_LC: "PURL_CABLE_LC",
 
 	PLACEMARKER: "PLACEMARKER",
 	REMOVEMARKER: "REMOVEMARKER",
@@ -83,7 +90,7 @@ func (t Token) String() string{
 }
 
 func (t Token) isStitch() bool{
-	if (t == KNIT || t == PURL || t == YO || t == SSK || t == KTOG || t == CO || t == BO || t == CABLE_BKD || t == CABLE_FWD || t == PURL_CABLE_BKD || t == PURL_CABLE_FWD){
+	if (t == KNIT || t == PURL || t == YO || t == SSK || t == KTOG || t == CO || t == BO || t == CABLE_LC || t == CABLE_RC || t == PURL_CABLE_LC || t == PURL_CABLE_RC || t == KNIT_REPEAT || t == PURL_REPEAT){
 		return true
 	} else{
 		return false
@@ -149,13 +156,15 @@ func (l *Lexer) Lex() (Position, Token, string) {
 				lit := l.lexIdent()
 				switch {
 				case isCableFwd(lit):
-					return startPos, CABLE_FWD, l.lexCableParams(lit) 
+					return startPos, CABLE_RC, l.lexCableParams(lit) 
 				case isCableBkd(lit):
-					return startPos, CABLE_BKD, l.lexCableParams(lit)
+					return startPos, CABLE_LC, l.lexCableParams(lit)
 				case isPurlCableFwd(lit):
-					return startPos, PURL_CABLE_FWD, l.lexCableParams(lit) 
+					return startPos, PURL_CABLE_RC, l.lexCableParams(lit) 
 				case isPurlCableBkd(lit):
-					return startPos, PURL_CABLE_BKD, l.lexCableParams(lit)
+					return startPos, PURL_CABLE_LC, l.lexCableParams(lit)
+				case isPurlCableBkd(lit):
+					return startPos, PURL_CABLE_LC, l.lexCableParams(lit)
 				case lit == "repeat":
 					return startPos, REPBLOCK, "REPBLOCK"
 				case lit == "section":
@@ -174,6 +183,10 @@ func (l *Lexer) Lex() (Position, Token, string) {
 					return startPos, REMOVEMARKER, l.lexMarkerName(lit)
 				case isPlaceMarker(lit):
 					return startPos, PLACEMARKER, l.lexMarkerName(lit)
+				case isKnitRepeat(lit):
+					return startPos, KNIT_REPEAT, l.lexRepeatCount(lit)
+				case isPurlRepeat(lit):
+					return startPos, PURL_REPEAT, l.lexRepeatCount(lit)
 				case lit == "k":
 					return l.pos, KNIT, "k"
 				case lit == "p":
@@ -242,7 +255,6 @@ func (l *Lexer) lexIdent() string {
 }
 
 func (l *Lexer) lexKtog(lit string) string{
-	// Devuelvee el char en segunda posicion. kntog
 	return string(lit[1])
 }
 
@@ -252,6 +264,10 @@ func (l *Lexer) lexCo(lit string) string {
 
 func (l *Lexer) lexBo(lit string) string {
 	return lit[2:]
+}
+
+func (l *Lexer) lexRepeatCount(lit string) string {
+	return string(lit[1])
 }
 
 func (l *Lexer) lexMarkerName(lit string) string{
@@ -285,22 +301,22 @@ func isBo(lit string) bool {
 }
 
 func isCableFwd(lit string) bool {
-    reg, _ := regexp.Compile(`^c[0-9]+b$|^c[0-9]+/[0-9]+f$`)
+    reg, _ := regexp.Compile(`^c[0-9]+r$|^c[0-9]+/[0-9]+r$`)
     return reg.MatchString(lit)
 }
 
 func isCableBkd(lit string) bool {
-    reg, _ := regexp.Compile(`^c[0-9]+b$|^c[0-9]+/[0-9]+b$`)
+    reg, _ := regexp.Compile(`^c[0-9]+l$|^c[0-9]+/[0-9]+l$`)
     return reg.MatchString(lit)
 }
 
 func isPurlCableFwd(lit string) bool {
-    reg, _ := regexp.Compile(`^p[0-9]+f$|^p[0-9]+/[0-9]+f$`)
+    reg, _ := regexp.Compile(`^p[0-9]+r$|^p[0-9]+/[0-9]+r$`)
     return reg.MatchString(lit)
 }
 
 func isPurlCableBkd(lit string) bool {
-    reg, _ := regexp.Compile(`^p[0-9]+b$|^p[0-9]+/[0-9]+b$`)
+    reg, _ := regexp.Compile(`^p[0-9]+l$|^p[0-9]+/[0-9]+l$`)
     return reg.MatchString(lit)
 }
 
@@ -315,3 +331,14 @@ func (l *Lexer) lexCableParams(lit string) string {
     }
     return "1,0" 
 }
+
+func isKnitRepeat(lit string) bool {
+    reg, _ := regexp.Compile(`^k[0-9]+$`)
+    return reg.MatchString(lit)
+}
+
+func isPurlRepeat(lit string) bool {
+    reg, _ := regexp.Compile(`^p[0-9]+$`)
+    return reg.MatchString(lit)
+}
+

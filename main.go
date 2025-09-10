@@ -37,9 +37,13 @@ func test_parser(file io.Reader){
 
 
 
-func test_compile(file io.Reader) {
+func test_compile(file io.Reader) Compiler {
 	parser := NewParser(file)
-	pattern, _ := parser.ParsePattern()
+	pattern, err := parser.ParsePattern()
+
+	if err != nil {
+		fmt.Print(err)
+	}
 
 	c := NewCompiler()
 	for _, section := range pattern {
@@ -47,19 +51,21 @@ func test_compile(file io.Reader) {
 			if row, ok := node.(*ParsedRow); ok {
 				if err := c.compileRow(row); err != nil {
 					fmt.Printf("[ERROR] compiling row fila %d: %s\n >> desc: %v\n", c.Pos.RowPos, row, err)
-					return
+					return Compiler{}
 				}
 			} else if repeatBlock, ok := node.(*ParsedRepeatBlock); ok  {
 				c.compileRepeatBlock(repeatBlock)
-			}
+			} 
 		}
 	}
+	return *c
 }
 
 
 
 func main() {
-	file, err := os.Open("input.test")
+	// file, err := os.Open("input.test")
+	file, err := os.Open("./examples/lace-132.knit")
 	if err != nil {
 		panic(err)
 	}
@@ -71,5 +77,9 @@ func main() {
 		panic(err)
 	}
 	// test_parser(file)
-	test_compile(file)
+	c := test_compile(file)
+	err = compileToImg(c, "output.jpg")
+	if err != nil {
+		fmt.Println(err)
+	}
 }

@@ -34,26 +34,25 @@ func (k *Ktog) isExpr()         {}
 func (y *Yo) isExpr()           {}
 func (c *Co) isExpr()           {}
 func (c *Bo) isExpr()           {}
-func (c *CableBkd) isExpr()     {}
-func (c *CableFwd) isExpr()     {}
-func (c *PurlCableBkd) isExpr() {}
-func (c *PurlCableFwd) isExpr() {}
+func (c *CableLC) isExpr()     {}
+func (c *CableRC) isExpr()     {}
+func (c *PurlCableLC) isExpr() {}
+func (c *PurlCableRC) isExpr() {}
 func (g *Group) isExpr()        {}
 
 type Knit struct{}
-
-func (k *Knit) String() string { return "Knit" }
+func (k *Knit) String() string { return "K" }
 func (k *Knit) weight() int    { return 1 }
 func (k *Knit) advance() int   { return 1 }
 
 type Purl struct{}
 
-func (p *Purl) String() string { return "Purl" }
+func (p *Purl) String() string { return "P" }
 func (p *Purl) weight() int    { return 1 }
 func (p *Purl) advance() int   { return 1 }
 
 type Ssk struct{}             // REDUCCION
-func (s *Ssk) String() string { return "Slip slip knit" }
+func (s *Ssk) String() string { return "SSK" }
 func (s *Ssk) weight() int    { return 1 }
 func (s *Ssk) advance() int   { return 2 }
 
@@ -69,7 +68,7 @@ type Co struct {
 	Count int
 }
 
-func (c *Co) String() string { return "Cast on" + strconv.Itoa(c.Count) }
+func (c *Co) String() string { return "CO" + strconv.Itoa(c.Count) }
 func (c *Co) weight() int    { return c.Count }
 func (c *Co) advance() int   { return 0 }
 
@@ -77,52 +76,52 @@ type Bo struct {
 	Count int
 }
 
-func (b *Bo) String() string { return "Bind off" + strconv.Itoa(b.Count) }
+func (b *Bo) String() string { return "BO" + strconv.Itoa(b.Count) }
 func (b *Bo) weight() int    { return 0 }
 func (b *Bo) advance() int   { return b.Count }
 
 type Yo struct{}
 
-func (y *Yo) String() string { return "Yo" }
+func (y *Yo) String() string { return "YO" }
 func (y *Yo) weight() int    { return 1 }
 func (y *Yo) advance() int   { return 0 }
 
 // CABLES
-type CableFwd struct {
+type CableRC struct {
     FrontCount     int
     BackCount int
 }
 
-func (c *CableFwd) String() string { return fmt.Sprintf("C%d/%dF", c.FrontCount, c.BackCount) }
-func (c *CableFwd) weight() int  { return c.FrontCount + c.BackCount }
-func (c *CableFwd) advance() int { return c.weight() }
+func (c *CableRC) String() string { return fmt.Sprintf("C%d/%dF", c.FrontCount, c.BackCount) }
+func (c *CableRC) weight() int  { return c.FrontCount + c.BackCount }
+func (c *CableRC) advance() int { return c.weight() }
 
-type CableBkd struct {
+type CableLC struct {
     FrontCount     int
     BackCount int
 }
 
-func (c *CableBkd) String() string { return fmt.Sprintf("C%d/%dB", c.FrontCount, c.BackCount) }
-func (c *CableBkd) weight() int    { return c.FrontCount + c.BackCount }
-func (c *CableBkd) advance() int   { return c.weight() }
+func (c *CableLC) String() string { return fmt.Sprintf("C%d/%dB", c.FrontCount, c.BackCount) }
+func (c *CableLC) weight() int    { return c.FrontCount + c.BackCount }
+func (c *CableLC) advance() int   { return c.weight() }
 
-type PurlCableFwd struct {
+type PurlCableRC struct {
     FrontCount     int
     BackCount int
 }
 
-func (c *PurlCableFwd) String() string { return fmt.Sprintf("P%d/%dF", c.FrontCount, c.BackCount) }
-func (c *PurlCableFwd) weight() int    { return c.FrontCount + c.BackCount }
-func (c *PurlCableFwd) advance() int   { return c.weight() }
+func (c *PurlCableRC) String() string { return fmt.Sprintf("P%d/%dF", c.FrontCount, c.BackCount) }
+func (c *PurlCableRC) weight() int    { return c.FrontCount + c.BackCount }
+func (c *PurlCableRC) advance() int   { return c.weight() }
 
-type PurlCableBkd struct {
+type PurlCableLC struct {
     FrontCount     int
     BackCount int
 }
 
-func (c *PurlCableBkd) String() string { return fmt.Sprintf("P%d/%dB", c.FrontCount, c.BackCount) }
-func (c *PurlCableBkd) weight() int  { return c.FrontCount + c.BackCount }
-func (c *PurlCableBkd) advance() int { return c.weight() }
+func (c *PurlCableLC) String() string { return fmt.Sprintf("P%d/%dB", c.FrontCount, c.BackCount) }
+func (c *PurlCableLC) weight() int  { return c.FrontCount + c.BackCount }
+func (c *PurlCableLC) advance() int { return c.weight() }
 
 // Grupo - análogo a Group del parser
 type Group struct {
@@ -178,21 +177,6 @@ func (r *RepeatNeg) String() string {
 	return "Rep until " + strconv.Itoa(r.Count) + "(" + r.Content.String() + ")"
 }
 
-// Funciones helper para verificar tipos
-func isStitch(expr Expr) (Stitch, bool) {
-	st, ok := expr.(Stitch)
-	return st, ok
-}
-
-func isRepeat(expr Expr) (Repeat, bool) {
-	rep, ok := expr.(Repeat)
-	return rep, ok
-}
-
-func isGroup(expr Expr) (*Group, bool) {
-	group, ok := expr.(*Group)
-	return group, ok
-}
 
 type Row struct {
 	Stitches []Stitch
@@ -245,10 +229,6 @@ func (c *Compiler) startNewRow() {
 	newRow := &Row{
 		Stitches: make([]Stitch, 0),
 		Number:   c.Pos.RowPos,
-	}
-	if c.CurrentRow != nil {
-		c.Rows = append(c.Rows, c.CurrentRow)
-		c.LastRow = c.CurrentRow
 	}
 	c.CurrentRow = newRow
 	c.Pos.ColPos = 1
@@ -382,12 +362,14 @@ func (c *Compiler) compileRow(parsedRow *ParsedRow) error {
 		c.Pos.ColPos += advance
 	}
 	c.CurrentRow.Stitches = sts
-	fmt.Printf(">%s\n", sts)
 	if c.LastRow != nil && c.LastRow.weight() != c.CurrentRow.advance() {
 		return fmt.Errorf("Unmatch number of stitches. Expected: %d, Received: %d",
 			c.LastRow.weight(), c.CurrentRow.advance())
 	}
-
+	if c.CurrentRow != nil {
+		c.Rows = append(c.Rows, c.CurrentRow)
+		c.LastRow = c.CurrentRow
+	}
 	return nil
 }
 
@@ -432,14 +414,14 @@ func (c *Compiler) compileStitch(parsedStitch ParsedStitch) (Stitch, error) {
 		return &Co{Count: s.Count}, nil
 	case *ParsedBo:
 		return &Bo{Count: s.Count}, nil
-	case *ParsedCableBkd:
-		return &CableBkd{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
-	case *ParsedCableFwd:
-		return &CableFwd{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
-	case *ParsedPurlCableBkd:
-		return &PurlCableBkd{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
-	case *ParsedPurlCableFwd:
-		return &PurlCableFwd{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
+	case *ParsedCableLC:
+		return &CableLC{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
+	case *ParsedCableRC:
+		return &CableRC{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
+	case *ParsedPurlCableLC:
+		return &PurlCableLC{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
+	case *ParsedPurlCableRC:
+		return &PurlCableRC{BackCount: s.BackCount, FrontCount: s.FrontCount}, nil
 	default:
 		return nil, fmt.Errorf("Unknown stitch type: %T", parsedStitch)
 	}

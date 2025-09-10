@@ -1,5 +1,7 @@
 section rib {
-	c2b p*3;
+	co3;
+	p3;
+	k3;
 }
 
 	
