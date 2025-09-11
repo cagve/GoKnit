@@ -1,4 +1,5 @@
 section lace_171{
+	//multiplo de 12
 	co24;
 	(p4 k*8)*0;
 	(k*0)*0;

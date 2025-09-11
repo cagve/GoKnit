@@ -52,6 +52,12 @@ type ParsedKtog struct { // REDUCCION
 func (k *ParsedKtog) isStitch() {}
 func (k *ParsedKtog) String() string {return "Knit "+strconv.Itoa(k.Count) + " together"}
 
+type ParsedPtog struct { // REDUCCION
+	Count int
+}
+func (p *ParsedPtog) isStitch() {}
+func (p *ParsedPtog) String() string {return "Purl "+strconv.Itoa(p.Count) + " together"}
+
 
 type ParsedBo struct{
 	Count int
@@ -315,6 +321,20 @@ func (p *Parser) parseKtog() (*ParsedKtog, error){
 	return &ParsedKtog{Count: i}, nil
 }
 
+func (p *Parser) parsePtog() (*ParsedPtog, error){
+	pos, tok, lit := p.scan()
+	if tok != PTOG {
+		return &ParsedPtog{}, fmt.Errorf("Expected KTOG, received %q in %q", tok, pos)
+	}
+	i, err  := strconv.Atoi(lit)
+	if err!= nil  {
+		return nil, fmt.Errorf("invalid epeition count: %q", lit)
+	}
+	return &ParsedPtog{Count: i}, nil
+}
+
+
+
 func (p *Parser) parseExpr() (ParsedExpr, error) {
 	pos, tok, _ := p.scan()
 	switch {
@@ -392,6 +412,9 @@ func (p *Parser) parseStitch() (ParsedExpr, error){
 	case KTOG:
 		p.unscan()
 		return p.parseKtog()
+	case PTOG:
+		p.unscan()
+		return p.parsePtog()
 	case CABLE_RC, CABLE_LC, PURL_CABLE_RC, PURL_CABLE_LC:
 		p.unscan() 
 		return p.parseCable()
@@ -527,7 +550,6 @@ func (p *Parser) parseRemoveMarker() (*RemoveMarker, error){
 
 
 func (p *Parser) parseSection() (*Section, error) {
-	// Validar que la sección empieza con la palabra clave "section"
 	pos, tok, _ := p.scan()
 	if tok != SECTION {
 		return nil, fmt.Errorf("expected 'section', got %q at %v", tok, pos)

@@ -154,6 +154,8 @@ func stackImagesVertically(images []*image.RGBA) (*image.RGBA, error) {
 
 func getImagePath(stitch any) string {
 	switch stitch.(type) {
+	case *CableRC:
+		return "rec/22rc.jpg"
 	case *Knit:
 		return "rec/k.jpg"
 	case *Purl:
@@ -162,6 +164,8 @@ func getImagePath(stitch any) string {
 		return "rec/ssk.jpg"
 	case *Ktog:
 		return "rec/k2tog.jpg"
+	case *Ptog:
+		return "rec/p2tog.jpg"
 	case *Yo:
 		return "rec/yo.jpg"
 	case *Co, *Bo:

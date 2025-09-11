@@ -65,7 +65,7 @@ func test_compile(file io.Reader) Compiler {
 
 func main() {
 	// file, err := os.Open("input.test")
-	file, err := os.Open("./examples/lace-132.knit")
+	file, err := os.Open("./examples/lace-146.knit")
 	if err != nil {
 		panic(err)
 	}
@@ -81,5 +81,8 @@ func main() {
 	err = compileToImg(c, "output.jpg")
 	if err != nil {
 		fmt.Println(err)
+	}
+	for _, row := range(c.Rows) {
+		fmt.Println(row)
 	}
 }

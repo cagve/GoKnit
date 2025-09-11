@@ -31,6 +31,7 @@ func (k *Knit) isExpr()         {}
 func (p *Purl) isExpr()         {}
 func (s *Ssk) isExpr()          {}
 func (k *Ktog) isExpr()         {}
+func (p *Ptog) isExpr()         {}
 func (y *Yo) isExpr()           {}
 func (c *Co) isExpr()           {}
 func (c *Bo) isExpr()           {}
@@ -63,6 +64,14 @@ type Ktog struct { // REDUCCION
 func (k *Ktog) String() string { return "K" + strconv.Itoa(k.Count) + "TOG" }
 func (k *Ktog) weight() int    { return 1 }
 func (k *Ktog) advance() int   { return k.Count }
+
+type Ptog struct { // REDUCCION
+	Count int
+}
+
+func (k *Ptog) String() string { return "P" + strconv.Itoa(k.Count) + "TOG" }
+func (k *Ptog) weight() int    { return 1 }
+func (k *Ptog) advance() int   { return k.Count }
 
 type Co struct {
 	Count int
@@ -408,6 +417,8 @@ func (c *Compiler) compileStitch(parsedStitch ParsedStitch) (Stitch, error) {
 		return &Ssk{}, nil
 	case *ParsedKtog:
 		return &Ktog{Count: s.Count}, nil
+	case *ParsedPtog:
+		return &Ptog{Count: s.Count}, nil
 	case *ParsedYo:
 		return &Yo{}, nil
 	case *ParsedCo:

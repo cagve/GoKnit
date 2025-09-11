@@ -25,6 +25,7 @@ const (
 	SSK
 	YO
 	KTOG
+	PTOG
 	CO
 	BO
 
@@ -46,6 +47,7 @@ const (
 	PLACEMARKER
 	REMOVEMARKER
 	NEG
+	COMMENT
 )
 
 var tokens = []string{
@@ -62,6 +64,7 @@ var tokens = []string{
 	SSK:		"SSK",
 	YO:			"YO",
 	KTOG:		"KTOG",
+	PTOG:		"PTOG",
 	CO:			"CO",
 	BO:			"BO",
 	
@@ -83,6 +86,7 @@ var tokens = []string{
 	SEMICOLON:	"SEMICOLON",
 	NEG:		"NEG",
 	REPBLOCK:	"REPBLOCK",
+	COMMENT: 	"COMMENT",
 }
 
 func (t Token) String() string{
@@ -90,7 +94,7 @@ func (t Token) String() string{
 }
 
 func (t Token) isStitch() bool{
-	if (t == KNIT || t == PURL || t == YO || t == SSK || t == KTOG || t == CO || t == BO || t == CABLE_LC || t == CABLE_RC || t == PURL_CABLE_LC || t == PURL_CABLE_RC || t == KNIT_REPEAT || t == PURL_REPEAT){
+	if (t == KNIT || t == PURL || t == YO || t == SSK || t == KTOG || t == PTOG || t == CO || t == BO || t == CABLE_LC || t == CABLE_RC || t == PURL_CABLE_LC || t == PURL_CABLE_RC || t == KNIT_REPEAT || t == PURL_REPEAT){
 		return true
 	} else{
 		return false
@@ -142,6 +146,16 @@ func (l *Lexer) Lex() (Position, Token, string) {
 			return l.pos, PARCLOSE, ")"
 		case '*':
 			return l.pos, REP, "*"
+		case '/':
+			next, _, err := l.reader.ReadRune()
+			if err == nil {
+				if next == '/' {
+					_ = l.lexComment() 
+					continue          
+				}
+				l.backup()
+				return l.pos, ILLEGAL, "/"
+			}
 		default:
 			if unicode.IsSpace(r){
 				continue
@@ -171,6 +185,8 @@ func (l *Lexer) Lex() (Position, Token, string) {
 					return startPos, SECTION, "SECTION"
 				case isKtog(lit):
 					return startPos, KTOG, l.lexKtog(lit)
+				case isPtog(lit):
+					return startPos, PTOG, l.lexKtog(lit)
 				case isCo(lit):
 					return startPos, CO, l.lexCo(lit)
 				case isBo(lit):
@@ -212,6 +228,20 @@ func(l *Lexer) backup() {
 		panic (err)
 	}
 	l.pos.column--
+}
+
+func (l *Lexer) lexComment() string {
+    var lit string
+    for {
+        r, _, err := l.reader.ReadRune()
+        if err != nil || r == '\n' {
+            l.resetPosition()
+            break
+        }
+        lit += string(r)
+        l.pos.column++
+    }
+    return lit
 }
 
 func (l *Lexer) lexInt() string{
@@ -287,6 +317,11 @@ func isRemoveMarker(lit string) bool{
 
 func isKtog(lit string) bool {
 	reg, _ := regexp.Compile("^k[0-9]tog")
+	return reg.MatchString(lit)
+}
+
+func isPtog(lit string) bool {
+	reg, _ := regexp.Compile("^p[0-9]tog")
 	return reg.MatchString(lit)
 }
 

@@ -1,0 +1,9 @@
+section lace_146 {
+	// multiplo de 12 + 1
+	co25;
+	k0;
+	p4 (k5 p7)*0 k5 p4;
+	p2tog (p2 k2 yo k1 yo k2 p2 p3tog)*0 p2 k2 yo k1 yo k2 p2 p2tog;
+	p2tog (p1 k2 yo k3 yo k2 p1 p3tog)*0 p1 k2 yo k3 yo k2 p1 p2tog;
+	p2tog (k2 yo k5 yo k2 p3tog)*0 k2 yo k5 yo k2 p2tog;
+}
