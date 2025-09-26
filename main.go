@@ -2,8 +2,10 @@ package main
 
 import ( 
 	"fmt"
+	"strings"
 	"os"
 	"io"
+	"github.com/rivo/tview"
 )
 
 
@@ -61,11 +63,8 @@ func test_compile(file io.Reader) Compiler {
 	return *c
 }
 
-
-
-func main() {
-	// file, err := os.Open("input.test")
-	file, err := os.Open("./examples/lace-132.knit")
+func launch_parser(){
+	file, err := os.Open("./input.test")
 	if err != nil {
 		panic(err)
 	}
@@ -78,8 +77,57 @@ func main() {
 	}
 	// test_parser(file)
 	c := test_compile(file)
-	err = compileToImg(c, "output.jpg")
+	// err = compileToImg(c, "output.jpg")
+	fmt.Println(c)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
+
+func main() {
+	app 	:= tview.NewApplication()
+	form 	:= tview.NewForm().
+				AddTextView("Título", "Patrón de Diseño Singleton", 0, 1, false, false).
+				AddTextView("Autor", "Gamma, Helm, Johnson, Vlissides", 0, 1, false, false).
+				AddTextView("Fecha inicio", "1994", 0, 1, false, false).
+				AddTextView("Dificultad", "Media", 0, 1, false, false).
+				AddTextView("Categoría", "Creacional", 0, 1, false, false)
+	form.SetBorder(true).SetTitle("Información del Patrón")
+
+
+	// Crear List en lugar de Table
+	list := tview.NewList().ShowSecondaryText(false)
+
+	// Datos de las filas del patrón
+	filas := []struct {
+		numero string
+		puntos []string
+	}{
+		{"1", []string{"CO3"}},
+		{"2", []string{"P", "P", "P"}},
+		{"3", []string{"K", "K", "K"}},
+	}
+
+	// Añadir cada fila como item de la lista
+	for _, fila := range filas {
+		instrucciones := strings.Join(fila.puntos, ", ")
+		list.AddItem(fmt.Sprintf("Fila %s: %s", fila.numero, instrucciones), "", 0, nil)
+	}
+
+	list.SetBorder(true).SetTitle("Filas del Patrón (↑↓ para navegar)")
+
+	// Hacerla navegable y con feedback visual
+	list.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
+		// Aquí puedes añadir acción al seleccionar una fila
+		app.SetFocus(list)
+	})
+
+	flex	:= tview.NewFlex().
+			AddItem(form, 0, 30, false).
+			AddItem(list, 0, 70, true)
+
+	if err := app.SetRoot(flex, true).SetFocus(flex).Run(); err != nil {
+		panic(err)
+	}
+}
+
