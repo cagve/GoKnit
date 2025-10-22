@@ -62,10 +62,9 @@ func test_compile(file io.Reader) Compiler {
 }
 
 
+func launch_parser(){
+	file, err := os.Open("./input.test")
 
-func main() {
-	// file, err := os.Open("input.test")
-	file, err := os.Open("./examples/lace-146.knit")
 	if err != nil {
 		panic(err)
 	}
@@ -78,7 +77,8 @@ func main() {
 	}
 	// test_parser(file)
 	c := test_compile(file)
-	err = compileToImg(c, "output.jpg")
+	// err = compileToImg(c, "output.jpg")
+	fmt.Println(c)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -86,3 +86,9 @@ func main() {
 		fmt.Println(row)
 	}
 }
+
+func main() {
+	// readSession("lib/example.json")
+	app()
+}
+
