@@ -212,7 +212,8 @@ func (r *Row) String() string {
 	for _, st := range r.Stitches {
 		stitches = append(stitches, st.String())
 	}
-	return fmt.Sprintf("Row %d: [%s]", r.Number, strings.Join(stitches, ", "))
+	// return fmt.Sprintf("Row %d: [%s]", r.Number, strings.Join(stitches, ", "))
+	return strings.Join(stitches, ", ")
 }
 
 type Compiler struct {

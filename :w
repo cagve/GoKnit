@@ -18,7 +18,6 @@ import (
 type AppState struct {
 	session Session
 	file	string
-	maxRowNumber int
 }
 
 var appState AppState
@@ -103,13 +102,15 @@ func newSession(filename string, pattern string) Session{
 	re := regexp.MustCompile(`[^a-z0-9_]`)
 	file = re.ReplaceAllString(file, "")
 
+	filepath := "lib/"+file+".json"
+
 	s := Session{
 		Id: len(sessions),
 		Name: filename,
 		Row: 0,
 		Pattern: pattern,
 	}
-	writeSession(s, file+".json")
+	writeSession(s, filepath)
 	return s
 }
 
@@ -139,22 +140,6 @@ func saveDialog(app *tview.Application, mainView *tview.Flex) *tview.Modal {
 	return dialog
 }
 
-func patternWidget(filename string) *tview.Flex {
-	patternWidget := tview.NewFlex().
-		SetDirection(tview.FlexRow)
-
-	file, _ := os.Open("patterns/"+filename)
-	c := test_compile(file)
-	rows := c.Rows
-
-	for i, s := range rows {
-		item := tview.NewTextView().SetLabel("Row "+strconv.Itoa(i)+": ").SetText(s.String()).SetDynamicColors(true)
-		patternWidget.AddItem(item,1,1,false)
-	}
-	appState.maxRowNumber = len(rows)
-	return patternWidget
-}
-
 func app() {
     app := tview.NewApplication()
 
@@ -175,8 +160,7 @@ func app() {
 	log.SetBorder(true). 
 		SetTitle("log")
 
-	patternBox := tview.NewFlex()
-	patternBox.SetTitle("Pattern").SetBorder(true)
+	patternBox := tview.NewBox().SetTitle("Pattern").SetBorder(true)
 
 	left := tview.NewFlex().SetDirection(tview.FlexRow)
 	placeHolder := tview.NewFlex().SetDirection(tview.FlexRow)
@@ -197,17 +181,6 @@ func app() {
 		log.SetText(fmt.Sprintf("%s [%s]: %s\n", prevText, time.Now().Format("03:04:00"), text))
 	}
 
-	updatePattern := func () {
-		patternBox.Clear()
-		widget := patternWidget(appState.session.Pattern)
-		focus := widget.GetItem(appState.session.Row).(*tview.TextView)
-		label := focus.GetLabel()
-		text := focus.GetText(false)
-		focus.SetLabel("[black:white]" + label)
-		focus.SetText("[black:white]" + text)
-		patternBox.AddItem(widget, 0, 1, false)
-	}
-
 	updatePlaceHolder(sessionInfoBox, "Knitting instruction")
 
 	updateInfo := func() {
@@ -220,7 +193,6 @@ func app() {
 		rowForm.SetText(strconv.Itoa(appState.session.Row))
 		updatePlaceHolder(sessionInfoBox, "Knitting instructions")
 		app.SetFocus(actionList)
-		updatePattern()
     }
 
 
@@ -232,6 +204,8 @@ func app() {
 		}
 
 		patterns := listPattern()
+		listMenu := tview.NewFlex().SetDirection(tview.FlexRow)
+		patternsEntries := tview.NewFlex().SetDirection(tview.FlexRow)
 		patternsList := tview.NewDropDown().SetLabel("Select a pattern")
 		form := tview.NewForm()
 		var file string
@@ -241,9 +215,11 @@ func app() {
 			textView := form.GetFormItem(1).(*tview.TextView)
 			textView.SetText(file)
 			inputField := form.GetFormItem(2)
-			app.SetFocus(inputField)
+			app.Focus(inputField)
 		})
 
+		t := tview.NewTextView().SetText(strings.Join(patterns, "\n"))
+		patternsEntries.AddItem(t,0,1,false)
 
 		form.AddFormItem(patternsList).
 			AddTextView("Selected pattern:", "none", 0, 0, false, false).
@@ -251,11 +227,12 @@ func app() {
 			AddButton("Save", func(){
 				name := form.GetFormItem(2).(*tview.InputField).GetText()
 				appState.session = newSession(name, file)
-				appState.file = name+".json"
 				updateInfo()
 			})
-		updatePlaceHolder(form, "Open session")
-		app.SetFocus(form)
+		listMenu.AddItem(patternsEntries, 0, 1, false)
+		listMenu.AddItem(form, 0, 1, true)
+		updatePlaceHolder(listMenu, "Open session")
+		app.SetFocus(listMenu)
 	}).
 		AddItem("open", "", 'o', func() {
 			if !isSafeToClose(){
@@ -330,18 +307,10 @@ func app() {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Rune() == '+' {
 			if (Session{}) == appState.session {return nil}
-			if appState.session.Row < appState.maxRowNumber-1 {
-				appState.session.Row++
-			}else{
-				appState.session.Row = 0
-			}
+			appState.session.Row++
 			updateInfo()
 		} else if event.Rune() == '-' {
-			if appState.session.Row > 0 {
-				appState.session.Row--
-			}else{
-				appState.session.Row = appState.maxRowNumber-1
-			}
+			appState.session.Row--
 			updateInfo()
 		}
 		return event

@@ -1,10 +1,8 @@
 section rib {
 	co10;
-	k2 c2r k*0;
+	k*0;
 	p*0;
-	k2 c2r k*0;
-	p*0;
-	p2tog;
+	k*0;
 }
 
 	
